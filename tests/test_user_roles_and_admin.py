@@ -15,12 +15,12 @@ def test_seed_users_initialization():
     assert admin["role"] == "admin"
     assert admin["plan"] == "enterprise"
 
-    alex = UserStore.get_user("alex@pro.com")
+    alex = UserStore.get_user("alex@pentactopus.com")
     assert alex is not None
     assert alex["role"] == "subscriber"
     assert alex["plan"] == "pro"
 
-    guest = UserStore.get_user("guest@free.com")
+    guest = UserStore.get_user("guest@pentactopus.com")
     assert guest is not None
     assert guest["role"] == "free_user"
     assert guest["plan"] == "free"
@@ -69,7 +69,7 @@ def test_admin_html_renders_user_management():
     html = AdminDashboard.render_admin_html()
     assert "User Accounts & Roles (RBAC)" in html
     assert "admin@pentactopus.com" in html
-    assert "alex@pro.com" in html
+    assert "alex@pentactopus.com" in html
     assert "PRO SUBSCRIBER" in html
-    assert "Coupons & Promo Engine" in html
-    assert "Global Device Mesh Nodes" in html
+    assert "Promo & Coupon Engine" in html
+    assert "Active Device Mesh Nodes" in html

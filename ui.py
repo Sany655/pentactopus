@@ -37,7 +37,7 @@ from hub.device_hub import DeviceHub
 from api.coupons import CouponManager
 from api.billing import BillingManager, PLANS
 from api.admin_dashboard import AdminDashboard
-from api.user_store import UserStore
+from api.user_store import UserStore, AuthError, LockoutError
 
 REPORTS_DIR = os.path.join(BASE_DIR, "reports")
 os.makedirs(REPORTS_DIR, exist_ok=True)
@@ -75,11 +75,19 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
         parsed = urllib.parse.urlparse(self.path)
         path = parsed.path
 
-        if path in ["/", "/index.html", "/dashboard"]:
+        if path in ["/", "/index.html", "/dashboard", "/login", "/register"]:
             self.send_response(200)
             self.send_header("Content-type", "text/html; charset=utf-8")
             self.end_headers()
             self.wfile.write(HTML_PAGE.encode("utf-8"))
+
+        elif path == "/api/auth/me":
+            auth = self.headers.get("Authorization", "")
+            user = UserStore.validate_session(auth)
+            if user:
+                self._send_json({"success": True, "user": user})
+            else:
+                self._send_json({"success": False, "error": "Unauthorized"}, 401)
 
         elif path == "/api/status":
             self.handle_get_status()
@@ -197,6 +205,39 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
         elif path == "/api/admin/coupons/toggle":
             ok = CouponManager.toggle_coupon(data.get("code", ""), data.get("enabled", True))
             self._send_json({"success": ok})
+
+        elif path == "/api/auth/register":
+            try:
+                user, token = UserStore.register_user(
+                    name=data.get("name", ""),
+                    email=data.get("email", ""),
+                    password=data.get("password", "")
+                )
+                self._send_json({"success": True, "user": user, "token": token})
+            except AuthError as e:
+                self._send_json({"success": False, "error": str(e)}, 400)
+            except Exception as e:
+                self._send_json({"success": False, "error": "Registration failed"}, 500)
+
+        elif path == "/api/auth/login":
+            try:
+                user, token = UserStore.authenticate_user(
+                    email=data.get("email", ""),
+                    password=data.get("password", ""),
+                    client_ip="127.0.0.1"
+                )
+                self._send_json({"success": True, "user": user, "token": token})
+            except LockoutError as e:
+                self._send_json({"success": False, "error": str(e), "retry_after": e.retry_after}, 429)
+            except AuthError as e:
+                self._send_json({"success": False, "error": str(e)}, 401)
+            except Exception as e:
+                self._send_json({"success": False, "error": "Login failed"}, 500)
+
+        elif path == "/api/auth/logout":
+            auth = self.headers.get("Authorization", "")
+            UserStore.revoke_session(auth)
+            self._send_json({"success": True, "message": "Session revoked"})
 
         elif path == "/api/admin/user/role":
             try:

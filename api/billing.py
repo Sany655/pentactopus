@@ -24,20 +24,20 @@ PLANS = {
         "interval": "forever",
         "features": [
             "1 Paired Device",
-            "Local LAN AnyDesk Viewport",
+            "Local LAN P2P Remote Desktop",
             "Bring-Your-Own-Key (BYOK) AI",
             "30 min/day Cloud Remote Access"
         ]
     },
     "pro": {
         "id": "plan_pro",
-        "name": "Penta Pro",
+        "name": "Pentactopus Pro",
         "price_usd": 12.0,
         "interval": "month",
         "stripe_price_id": os.getenv("STRIPE_PRICE_ID_PRO", "price_penta_pro_monthly"),
         "features": [
-            "Unlimited P2P WebRTC AnyDesk Remote Control",
-            "2,000 Monthly Google Antigravity AI Steps",
+            "Unlimited P2P WebRTC Remote Desktop",
+            "2,000 Monthly Autonomous Vision AI Steps",
             "Up to 5 Paired Windows & Android Devices",
             "Bi-directional Cloud Clipboard Sync",
             "Background Device Wake & Audio Streaming"
@@ -88,7 +88,7 @@ class BillingManager:
         total_operating_cost = round(ai_cost + turn_cost + cloud_cost, 2)
         suggested_price = max(12.0, round(total_operating_cost * 2.2, 2))
 
-        # Estimated savings vs AnyDesk ($14.90/mo) + ChatGPT Plus ($20/mo) = $34.90/mo
+        # Benchmark reference savings vs traditional remote desk and model APIs ($34.90/mo)
         competitor_price = 34.90
         monthly_savings = max(0.0, round(competitor_price - 12.0, 2))
 
@@ -152,7 +152,7 @@ class BillingManager:
                             "currency": "usd",
                             "product_data": {
                                 "name": plan["name"],
-                                "description": "AnyDesk WebRTC Remote Control + Google Antigravity Autonomous AI"
+                                "description": "Pentactopus Remote Desktop Mesh + Autonomous Computer-Use Vision AI"
                             },
                             "unit_amount": int(final_price * 100),
                             "recurring": {"interval": "month"}

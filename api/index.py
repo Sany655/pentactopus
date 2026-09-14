@@ -1,8 +1,11 @@
-"""Vercel Serverless API & Web Handler for Penta-Assistant.
+"""Vercel Serverless API & Web Handler for Pentactopus.
 
-Provides global cloud-hosted endpoints for device discovery, AnyDesk-style
-screen streaming, action dispatch, Google Antigravity multi-model AI,
-Stripe subscription billing, promo code redemption, and RBAC user management.
+Provides enterprise endpoints for:
+- User Authentication (PBKDF2 salted hashing, 7-day session tokens)
+- Brute-Force Rate Limiting & Account Lockout Defense
+- Enterprise RBAC Role Administration & Route Protection Guards
+- P2P Remote Desktop Device Mesh & Autonomous Computer-Use Vision AI
+- Dynamic Unit Economics Calculation & Stripe Billing Engine
 """
 
 from http.server import BaseHTTPRequestHandler
@@ -20,7 +23,7 @@ from hub.device_hub import DeviceHub
 from api.coupons import CouponManager
 from api.billing import BillingManager
 from api.admin_dashboard import AdminDashboard
-from api.user_store import UserStore
+from api.user_store import UserStore, AuthError, LockoutError
 from api.web_template import HTML_PAGE
 
 class handler(BaseHTTPRequestHandler):
@@ -43,7 +46,8 @@ class handler(BaseHTTPRequestHandler):
         path = parsed.path.rstrip("/") or "/"
         query = urllib.parse.parse_qs(parsed.query)
 
-        if path in ("", "/", "/index.html", "/dashboard"):
+        # Web UI pages
+        if path in ("", "/", "/index.html", "/dashboard", "/login", "/register"):
             self._send_cors(200, "text/html; charset=utf-8")
             self.wfile.write(HTML_PAGE.encode("utf-8"))
             return
@@ -60,7 +64,19 @@ class handler(BaseHTTPRequestHandler):
             self.send_header("Content-Type", "application/octet-stream")
             self.send_header("Access-Control-Allow-Origin", "*")
             self.end_headers()
-            self.wfile.write(f"Penta-Assistant client binary installer for {fname}".encode("utf-8"))
+            self.wfile.write(f"Pentactopus installer stream for {fname}".encode("utf-8"))
+            return
+
+        # Auth Session Validation
+        if path == "/api/auth/me":
+            auth_header = self.headers.get("Authorization", "")
+            user = UserStore.validate_session(auth_header)
+            if user:
+                self._send_cors(200)
+                self.wfile.write(json.dumps({"success": True, "user": user}).encode("utf-8"))
+            else:
+                self._send_cors(401)
+                self.wfile.write(json.dumps({"success": False, "error": "Invalid or expired session token"}).encode("utf-8"))
             return
 
         if path == "/api/admin/overview":
@@ -74,7 +90,7 @@ class handler(BaseHTTPRequestHandler):
             return
 
         if path == "/api/user/profile":
-            email = query.get("email", ["alex@pro.com"])[0]
+            email = query.get("email", ["alex@pentactopus.com"])[0]
             user = UserStore.get_user(email) or UserStore.create_or_get_user(email)
             self._send_cors(200)
             self.wfile.write(json.dumps({"user": user}).encode("utf-8"))
@@ -122,8 +138,9 @@ class handler(BaseHTTPRequestHandler):
         path = parsed.path.rstrip("/") or "/"
         length = int(self.headers.get("Content-Length", 0))
         raw_body = self.rfile.read(length) if length > 0 else b""
+        client_ip = self.client_address[0] if hasattr(self, "client_address") and self.client_address else "127.0.0.1"
 
-        # Binary frame upload
+        # Frame upload
         if path.startswith("/api/device/") and path.endswith("/frame"):
             parts = path.split("/")
             if len(parts) >= 4:
@@ -138,6 +155,56 @@ class handler(BaseHTTPRequestHandler):
         except Exception:
             data = {}
 
+        # ----------------------------------------------------------------------
+        # Authentication & Registration Endpoints
+        # ----------------------------------------------------------------------
+        if path == "/api/auth/register":
+            try:
+                user, token = UserStore.register_user(
+                    name=data.get("name", ""),
+                    email=data.get("email", ""),
+                    password=data.get("password", "")
+                )
+                self._send_cors(200)
+                self.wfile.write(json.dumps({"success": True, "user": user, "token": token}).encode("utf-8"))
+            except AuthError as e:
+                self._send_cors(400)
+                self.wfile.write(json.dumps({"success": False, "error": str(e)}).encode("utf-8"))
+            except Exception as e:
+                self._send_cors(500)
+                self.wfile.write(json.dumps({"success": False, "error": "Internal registration error"}).encode("utf-8"))
+            return
+
+        if path == "/api/auth/login":
+            try:
+                user, token = UserStore.authenticate_user(
+                    email=data.get("email", ""),
+                    password=data.get("password", ""),
+                    client_ip=client_ip
+                )
+                self._send_cors(200)
+                self.wfile.write(json.dumps({"success": True, "user": user, "token": token}).encode("utf-8"))
+            except LockoutError as e:
+                self._send_cors(429)  # 429 Too Many Requests (Brute-Force Lockout)
+                self.wfile.write(json.dumps({"success": False, "error": str(e), "retry_after": e.retry_after}).encode("utf-8"))
+            except AuthError as e:
+                self._send_cors(401)
+                self.wfile.write(json.dumps({"success": False, "error": str(e)}).encode("utf-8"))
+            except Exception as e:
+                self._send_cors(500)
+                self.wfile.write(json.dumps({"success": False, "error": "Internal login error"}).encode("utf-8"))
+            return
+
+        if path == "/api/auth/logout":
+            auth_header = self.headers.get("Authorization", "")
+            UserStore.revoke_session(auth_header)
+            self._send_cors(200)
+            self.wfile.write(json.dumps({"success": True, "message": "Session invalidated"}).encode("utf-8"))
+            return
+
+        # ----------------------------------------------------------------------
+        # Device Mesh & Remote Control
+        # ----------------------------------------------------------------------
         if path == "/api/device/register":
             dev = DeviceHub.register_device(
                 device_id=data.get("device_id", "unknown"),
@@ -160,6 +227,9 @@ class handler(BaseHTTPRequestHandler):
                 self.wfile.write(json.dumps({"success": True, "task_id": task_id}).encode("utf-8"))
                 return
 
+        # ----------------------------------------------------------------------
+        # Billing & Coupons
+        # ----------------------------------------------------------------------
         if path == "/api/coupons/redeem":
             email = data.get("email")
             res = CouponManager.redeem_coupon(data.get("code", ""), email)
@@ -194,7 +264,18 @@ class handler(BaseHTTPRequestHandler):
             self.wfile.write(json.dumps(res).encode("utf-8"))
             return
 
+        # ----------------------------------------------------------------------
+        # Admin Operations (Protected by RBAC / Secret Key)
+        # ----------------------------------------------------------------------
+        auth_header = self.headers.get("Authorization", "")
+        is_admin_auth = AdminDashboard.verify_auth(auth_header)
+
         if path == "/api/admin/user/role":
+            if not is_admin_auth:
+                self._send_cors(403)
+                self.wfile.write(json.dumps({"success": False, "error": "Unauthorized. Admin credentials required."}).encode("utf-8"))
+                return
+
             try:
                 email = data.get("email", "")
                 role = data.get("role", "subscriber")
@@ -208,6 +289,11 @@ class handler(BaseHTTPRequestHandler):
             return
 
         if path == "/api/admin/coupons/create":
+            if not is_admin_auth:
+                self._send_cors(403)
+                self.wfile.write(json.dumps({"success": False, "error": "Unauthorized. Admin credentials required."}).encode("utf-8"))
+                return
+
             try:
                 c = CouponManager.create_coupon(
                     code=data.get("code", ""),
@@ -223,6 +309,11 @@ class handler(BaseHTTPRequestHandler):
             return
 
         if path == "/api/admin/coupons/toggle":
+            if not is_admin_auth:
+                self._send_cors(403)
+                self.wfile.write(json.dumps({"success": False, "error": "Unauthorized. Admin credentials required."}).encode("utf-8"))
+                return
+
             try:
                 code = data.get("code", "")
                 enabled = data.get("enabled", True)
