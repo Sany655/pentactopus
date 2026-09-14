@@ -1,14 +1,14 @@
-"""Enterprise Web Template, Landing Page & Authentication UI for Pentatopus.
+"""Enterprise Web Template, Landing Page & Authentication UI for Pentactopus.
 
 Styled with modern Linear/Vercel-grade minimalism:
 - Deep matte carbon palette (#09090b) with hairline micro-borders
-- Geometric Pentatopus vector crest (5-node interconnected cyber mesh)
+- Geometric Pentactopus vector crest (5-node interconnected cyber mesh)
 - 100% proprietary enterprise branding
 - Zero cartoonish emojis or rainbow gradients
 - Dedicated /login, /register, and authenticated /dashboard views with brute-force handling
 """
 
-PENTATOPUS_LOGO_SVG = """<svg width="28" height="28" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+PENTACTOPUS_LOGO_SVG = """<svg width="28" height="28" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
   <circle cx="16" cy="16" r="5" fill="#3b82f6" stroke="#60a5fa" stroke-width="1.5"/>
   <circle cx="16" cy="5" r="2.5" fill="#94a3b8"/>
   <circle cx="26" cy="12" r="2.5" fill="#94a3b8"/>
@@ -22,7 +22,7 @@ HTML_PAGE = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Pentatopus | Autonomous Cross-Platform Computer-Use AI & Remote Desktop Mesh</title>
+  <title>Pentactopus | Autonomous Cross-Platform Computer-Use AI & Remote Desktop Mesh</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="Enterprise cross-platform computer-use AI and low-latency remote desktop infrastructure for Windows and Android.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -464,8 +464,8 @@ HTML_PAGE = f"""<!DOCTYPE html>
   <!-- Top Navigation -->
   <nav class="navbar">
     <div class="nav-brand">
-      {PENTATOPUS_LOGO_SVG}
-      <span>Pentatopus</span>
+      {PENTACTOPUS_LOGO_SVG}
+      <span>Pentactopus</span>
     </div>
     <div class="nav-links">
       <a href="#platform">Platform</a>
@@ -491,7 +491,7 @@ HTML_PAGE = f"""<!DOCTYPE html>
             <span id="dash-role-badge" style="font-size:11px; padding:2px 8px; border-radius:12px; background:rgba(59,130,246,0.15); color:var(--accent); border:1px solid rgba(59,130,246,0.3); text-transform:uppercase;">FREE USER</span>
           </h2>
           <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">
-            Account: <span id="dash-user-email" style="color:var(--heading); font-weight:500;">user@pentatopus.com</span> • License: <code id="dash-user-license" style="background:#09090b; padding:2px 6px; border-radius:4px; border:1px solid var(--card-border);">None</code>
+            Account: <span id="dash-user-email" style="color:var(--heading); font-weight:500;">user@pentactopus.com</span> • License: <code id="dash-user-license" style="background:#09090b; padding:2px 6px; border-radius:4px; border:1px solid var(--card-border);">None</code>
           </div>
         </div>
         <div style="display:flex; gap:8px;">
@@ -539,7 +539,7 @@ HTML_PAGE = f"""<!DOCTYPE html>
           <button class="btn btn-primary" onclick="dispatchAiTask()">Dispatch</button>
         </div>
         <div id="ai-log-terminal" class="node-terminal" style="min-height:70px;">
-          Pentatopus Engine Idle. Awaiting computer-use instruction.
+          Pentactopus Engine Idle. Awaiting computer-use instruction.
         </div>
       </div>
     </div>
@@ -549,7 +549,7 @@ HTML_PAGE = f"""<!DOCTYPE html>
   <section class="hero container" id="platform">
     <div class="hero-badge">
       <span class="dot"></span>
-      <span>Pentatopus Beta</span>
+      <span>Pentactopus Beta</span>
     </div>
     <h1 class="hero-title">
       YOUR COMPUTER. CONTROLLED BY YOU — OR YOUR AI.
@@ -558,7 +558,7 @@ HTML_PAGE = f"""<!DOCTYPE html>
       Control your Windows PC from Android and automate repetitive computer tasks with an AI agent that can see, act, verify, and recover.
     </p>
     <div class="hero-actions">
-      <button class="btn btn-primary" onclick="openAuthModal('register')">Try Pentatopus Free</button>
+      <button class="btn btn-primary" onclick="openAuthModal('register')">Try Pentactopus Free</button>
       <button class="btn" onclick="alert('Demo video coming soon!')">Watch Demo</button>
     </div>
 
@@ -710,7 +710,7 @@ HTML_PAGE = f"""<!DOCTYPE html>
     <div class="downloads-grid">
       <div class="download-card">
         <div>
-          <h4>Pentatopus for Windows</h4>
+          <h4>Pentactopus for Windows</h4>
           <div class="download-meta">
             Version: 2.5.0 • Size: 12.4 MB • Architecture: x64<br>
             OS: Windows 10, 11 (64-bit)<br>
@@ -722,7 +722,7 @@ HTML_PAGE = f"""<!DOCTYPE html>
 
       <div class="download-card">
         <div>
-          <h4>Pentatopus for Android</h4>
+          <h4>Pentactopus for Android</h4>
           <div class="download-meta">
             Version: 2.5.0 • Size: 14.2 MB • Architecture: arm64-v8a<br>
             OS: Android 11.0 through Android 15+<br>
@@ -759,7 +759,7 @@ HTML_PAGE = f"""<!DOCTYPE html>
       <div class="plan-box pro">
         <div>
           <div style="font-size:11px; font-weight:600; color:var(--accent); text-transform:uppercase; margin-bottom:4px;">Recommended</div>
-          <div class="plan-name">Pentatopus Pro</div>
+          <div class="plan-name">Pentactopus Pro</div>
           <div class="plan-price">$12 <span>/ mo</span></div>
           <ul class="plan-list">
             <li>5 Paired Devices (PC + Android)</li>
@@ -773,7 +773,7 @@ HTML_PAGE = f"""<!DOCTYPE html>
 
       <div class="plan-box">
         <div>
-          <div class="plan-name">Pentatopus Team</div>
+          <div class="plan-name">Pentactopus Team</div>
           <div class="plan-price">$29 <span>/ mo</span></div>
           <ul class="plan-list">
             <li>Unlimited Paired Devices</li>
@@ -791,10 +791,10 @@ HTML_PAGE = f"""<!DOCTYPE html>
   <div class="auth-overlay" id="auth-overlay" onclick="if(event.target===this) closeAuthModal()">
     <div class="auth-modal">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px;">
-        {PENTATOPUS_LOGO_SVG}
+        {PENTACTOPUS_LOGO_SVG}
         <button class="btn btn-sm" onclick="closeAuthModal()" style="border:none; background:transparent;">✕</button>
       </div>
-      <div class="auth-title" id="auth-modal-title">Sign In to Pentatopus</div>
+      <div class="auth-title" id="auth-modal-title">Sign In to Pentactopus</div>
       <div class="auth-sub" id="auth-modal-sub">Enter your credentials to access your workstation.</div>
 
       <div id="auth-alert" class="form-alert"></div>
@@ -807,7 +807,7 @@ HTML_PAGE = f"""<!DOCTYPE html>
 
         <div class="form-group">
           <label class="form-label">Email Address</label>
-          <input type="email" id="auth-email" class="form-input" placeholder="alex@pentatopus.com" required>
+          <input type="email" id="auth-email" class="form-input" placeholder="alex@pentactopus.com" required>
         </div>
 
         <div class="form-group">
@@ -827,7 +827,7 @@ HTML_PAGE = f"""<!DOCTYPE html>
 
   <footer>
     <div class="container">
-      <div style="margin-bottom:8px; font-weight:600; color:var(--heading);">Pentatopus Cross-Platform Autonomous Systems</div>
+      <div style="margin-bottom:8px; font-weight:600; color:var(--heading);">Pentactopus Cross-Platform Autonomous Systems</div>
       <div>High-Performance Remote Desktop Mesh • Computer-Use AI Engine • Enterprise RBAC</div>
     </div>
   </footer>
@@ -872,14 +872,14 @@ HTML_PAGE = f"""<!DOCTYPE html>
       alertBox.style.display = 'none';
 
       if (mode === 'register') {{
-        title.innerText = 'Create Pentatopus Account';
+        title.innerText = 'Create Pentactopus Account';
         sub.innerText = 'Provision access to the autonomous cross-platform mesh.';
         groupName.style.display = 'block';
         submitBtn.innerText = 'Create Account';
         toggleText.innerText = 'Already have an account?';
         toggleLink.innerText = 'Sign in';
       }} else {{
-        title.innerText = 'Sign In to Pentatopus';
+        title.innerText = 'Sign In to Pentactopus';
         sub.innerText = 'Enter your credentials to access your workstation.';
         groupName.style.display = 'none';
         submitBtn.innerText = 'Sign In';
@@ -1026,7 +1026,7 @@ HTML_PAGE = f"""<!DOCTYPE html>
         const res = await fetch('/api/coupons/redeem', {{
           method: 'POST',
           headers: {{ 'Content-Type': 'application/json' }},
-          body: JSON.stringify({{ code: code, email: currentUser ? currentUser.email : 'alex@pentatopus.com' }})
+          body: JSON.stringify({{ code: code, email: currentUser ? currentUser.email : 'alex@pentactopus.com' }})
         }});
         const data = await res.json();
         if (data.valid) {{

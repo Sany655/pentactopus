@@ -1,11 +1,11 @@
-# Pentatopus Demo Workflows
+# Pentactopus Demo Workflows
 
 ## DEMO 1: REMOTE PC FROM PHONE
 **Objective**: Control a Windows desktop from an Android phone browser.
 
 **Steps**:
 1. Install and run `PentaAssistant-Setup.exe` on the Windows host.
-2. Open the mobile browser on Android and navigate to the Pentatopus dashboard.
+2. Open the mobile browser on Android and navigate to the Pentactopus dashboard.
 3. Log in with the same account.
 4. Click on the "Windows PC" in the device list.
 5. The screen stream will appear. Tap the screen to move the mouse and send clicks.
@@ -15,7 +15,7 @@
 
 **Steps**:
 1. Ensure the Windows client is running and connected.
-2. In the Pentatopus Web UI, select the PC Agent.
+2. In the Pentactopus Web UI, select the PC Agent.
 3. In the AI prompt bar, type: "Open Chrome, search for today's exchange rate, copy the result into Notepad, and save the file to Documents."
 4. Click "Run AI".
 5. Watch the viewport as the AI observes the screen, plans the action, executes keyboard/mouse commands, and verifies the output.

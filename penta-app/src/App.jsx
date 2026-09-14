@@ -8,7 +8,7 @@ export default function App() {
   const [licenseKey, setLicenseKey] = useState('');
   const [isPro, setIsPro] = useState(false);
   const [aiGoal, setAiGoal] = useState('');
-  const [aiLogs, setAiLogs] = useState('Ready for Pentatopus directives...');
+  const [aiLogs, setAiLogs] = useState('Ready for Pentactopus directives...');
   const [isExecuting, setIsExecuting] = useState(false);
   const [frameTimestamp, setFrameTimestamp] = useState(Date.now());
   const viewportRef = useRef(null);
@@ -139,7 +139,7 @@ export default function App() {
       {/* Top Header */}
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 20px', borderBottom: '1px solid #27272a', background: '#121215' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <span style={{ fontSize: '16px', fontWeight: '600', letterSpacing: '-0.02em', color: '#f4f4f5' }}>Pentatopus</span>
+          <span style={{ fontSize: '16px', fontWeight: '600', letterSpacing: '-0.02em', color: '#f4f4f5' }}>Pentactopus</span>
           <span style={{ background: '#27272a', color: '#a1a1aa', fontSize: '11px', padding: '2px 8px', borderRadius: '4px', border: '1px solid #3f3f46' }}>Native Client</span>
           {isPro ? (
             <span style={{ background: 'rgba(59,130,246,0.15)', color: '#60a5fa', fontSize: '11px', padding: '2px 8px', borderRadius: '4px', border: '1px solid rgba(59,130,246,0.3)' }}>PRO ACTIVATED</span>
@@ -239,7 +239,7 @@ export default function App() {
           {/* AI Prompt Bar & Execution Console */}
           <div style={{ marginTop: '12px', background: '#121215', padding: '12px', borderRadius: '6px', border: '1px solid #27272a' }}>
             <div style={{ fontSize: '12px', color: '#3b82f6', fontWeight: '500', marginBottom: '6px' }}>
-              Pentatopus Co-Pilot ({selectedDevice === 'pc' ? 'PC Agent' : 'Mobile Agent'})
+              Pentactopus Co-Pilot ({selectedDevice === 'pc' ? 'PC Agent' : 'Mobile Agent'})
             </div>
             <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
               <input 

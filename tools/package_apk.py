@@ -1,4 +1,4 @@
-"""Package a genuine Android APK binary for Pentatopus releases."""
+"""Package a genuine Android APK binary for Pentactopus releases."""
 
 import zipfile
 import os
@@ -13,10 +13,10 @@ def build_apk():
     manifest = (
         b'<?xml version="1.0" encoding="utf-8"?>\n'
         b'<manifest xmlns:android="http://schemas.android.com/apk/res/android" '
-        b'package="com.pentatopus.assistant" android:versionCode="1" android:versionName="1.0.0">\n'
+        b'package="com.pentactopus.assistant" android:versionCode="1" android:versionName="1.0.0">\n'
         b'  <uses-permission android:name="android.permission.INTERNET" />\n'
         b'  <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />\n'
-        b'  <application android:label="Pentatopus Assistant" android:icon="@mipmap/ic_launcher">\n'
+        b'  <application android:label="Pentactopus Assistant" android:icon="@mipmap/ic_launcher">\n'
         b'    <activity android:name=".MainActivity" android:exported="true">\n'
         b'      <intent-filter>\n'
         b'        <action android:name="android.intent.action.MAIN" />\n'
@@ -34,8 +34,8 @@ def build_apk():
             z.writestr("AndroidManifest.xml", manifest)
             z.writestr("classes.dex", b"dex\n035\x00" + b"\x00" * 4096)
             z.writestr("resources.arsc", b"\x02\x00\x0c\x00" + b"\x00" * 1024)
-            z.writestr("META-INF/MANIFEST.MF", b"Manifest-Version: 1.0\nCreated-By: Pentatopus Builder\n")
-            z.writestr("res/values/strings.xml", b'<resources><string name="app_name">Pentatopus Assistant</string></resources>')
+            z.writestr("META-INF/MANIFEST.MF", b"Manifest-Version: 1.0\nCreated-By: Pentactopus Builder\n")
+            z.writestr("res/values/strings.xml", b'<resources><string name="app_name">Pentactopus Assistant</string></resources>')
         print(f"[APK] Generated {apk_file} ({os.path.getsize(apk_file)} bytes)")
 
 if __name__ == "__main__":

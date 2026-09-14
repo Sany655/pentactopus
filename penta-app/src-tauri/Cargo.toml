@@ -1,8 +1,8 @@
 [package]
 name = "penta-assistant"
 version = "1.0.0"
-description = "Pentatopus: Autonomous Vision AI & Cross-Platform Remote Control"
-authors = ["Pentatopus Team"]
+description = "Pentactopus: Autonomous Vision AI & Cross-Platform Remote Control"
+authors = ["Pentactopus Team"]
 edition = "2021"
 
 [build-dependencies]

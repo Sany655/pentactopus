@@ -8,7 +8,6 @@
   ],
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/index.py" },
-    { "source": "/download/(.*)", "destination": "/api/index.py" },
     { "source": "/dashboard", "destination": "/api/index.py" },
     { "source": "/login", "destination": "/api/index.py" },
     { "source": "/register", "destination": "/api/index.py" },

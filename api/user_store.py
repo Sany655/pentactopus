@@ -1,4 +1,4 @@
-"""User Store, PBKDF2 Password Hashing, Session Management & Brute-Force Shield for Pentatopus.
+"""User Store, PBKDF2 Password Hashing, Session Management & Brute-Force Shield for Pentactopus.
 
 Provides enterprise-grade RBAC, salted PBKDF2-SHA256 password hashing (100k rounds),
 cryptographic session tokens, and IP/account brute-force lockout defenses.
@@ -78,9 +78,9 @@ class UserStore:
     @classmethod
     def _get_seed_users(cls) -> Dict[str, Dict[str, Any]]:
         return {
-            "admin@pentatopus.com": {
+            "admin@pentactopus.com": {
                 "id": "usr_admin_master",
-                "email": "admin@pentatopus.com",
+                "email": "admin@pentactopus.com",
                 "name": "System Administrator",
                 "password_hash": hash_password("PentaAdmin2026!"),
                 "role": "admin",
@@ -90,9 +90,9 @@ class UserStore:
                 "created_at": time.time(),
                 "paired_devices": ["workstation-core", "pixel-9-pro"]
             },
-            "alex@pentatopus.com": {
+            "alex@pentactopus.com": {
                 "id": "usr_alex_pro",
-                "email": "alex@pentatopus.com",
+                "email": "alex@pentactopus.com",
                 "name": "Alex Rivera",
                 "password_hash": hash_password("PentaPro2026!"),
                 "role": "subscriber",
@@ -102,9 +102,9 @@ class UserStore:
                 "created_at": time.time() - 86400 * 10,
                 "paired_devices": ["dell-xps-15", "galaxy-s24-ultra"]
             },
-            "guest@pentatopus.com": {
+            "guest@pentactopus.com": {
                 "id": "usr_guest_free",
-                "email": "guest@pentatopus.com",
+                "email": "guest@pentactopus.com",
                 "name": "Guest Explorer",
                 "password_hash": hash_password("PentaFree2026!"),
                 "role": "free_user",
@@ -132,7 +132,7 @@ class UserStore:
             try:
                 with open(USERS_FILE, "r", encoding="utf-8") as f:
                     data = json.load(f)
-                    if "admin@pentatopus.com" in data and "password_hash" in data["admin@pentatopus.com"]:
+                    if "admin@pentactopus.com" in data and "password_hash" in data["admin@pentactopus.com"]:
                         cls._mem_users = data
                         return cls._mem_users
             except Exception:

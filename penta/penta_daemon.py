@@ -1,4 +1,4 @@
-"""Local Device Daemon & Remote Control Bridge for Pentatopus.
+"""Local Device Daemon & Remote Control Bridge for Pentactopus.
 
 Bridges the local Windows PC and connected Android Phone to the DeviceHub
 (and optional Vercel Cloud Relay).
@@ -233,7 +233,7 @@ class PentaDaemon:
         try:
             req = urllib.request.Request(
                 f"{self.cloud_url}/api/device/{device_id}/tasks",
-                headers={"User-Agent": "Pentatopus-Daemon/1.0"}
+                headers={"User-Agent": "Pentactopus-Daemon/1.0"}
             )
             with urllib.request.urlopen(req, timeout=3) as resp:
                 data = json.loads(resp.read().decode("utf-8"))

@@ -25,8 +25,8 @@ def sync_seeds():
     conn = DatabaseAdapter._get_connection()
     if conn:
         with conn.cursor() as cur:
-            cur.execute("DELETE FROM penta_users WHERE email LIKE '%@pentactopus.com'")
-            print("[DB] Cleaned up legacy @pentactopus.com users")
+            cur.execute("DELETE FROM penta_users WHERE email LIKE '%@pentatopus.com'")
+            print("[DB] Cleaned up legacy @pentatopus.com users")
         conn.close()
 
 if __name__ == "__main__":

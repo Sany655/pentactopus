@@ -62,7 +62,7 @@ def test_windows_setup_exe_in_public_downloads():
 
 def test_penta_daemon_task_execution_and_reporting():
     """Verify PentaDaemon executes local PC tasks and parses actions properly."""
-    daemon = PentaDaemon(cloud_url="http://mock-cloud.pentatopus.com")
+    daemon = PentaDaemon(cloud_url="http://mock-cloud.pentactopus.com")
     
     # Test PC task execution
     with patch.object(daemon.win_controller, "click") as mock_click:
@@ -71,9 +71,9 @@ def test_penta_daemon_task_execution_and_reporting():
         mock_click.assert_called_once_with(0.5, 0.5, button="left")
 
     with patch.object(daemon.win_controller, "type_text") as mock_type:
-        success, msg = daemon._execute_pc_task({"type": "type", "text": "Hello Pentatopus"})
+        success, msg = daemon._execute_pc_task({"type": "type", "text": "Hello Pentactopus"})
         assert success is True
-        mock_type.assert_called_once_with("Hello Pentatopus")
+        mock_type.assert_called_once_with("Hello Pentactopus")
 
     with patch.object(daemon.win_controller, "send_hotkey", return_value=True) as mock_hk:
         success, msg = daemon._execute_pc_task({"type": "hotkey", "hotkey": "win_d"})

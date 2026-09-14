@@ -16,4 +16,4 @@ Secure the first 20 real testers to validate the core loop: Device Pairing -> Fi
 5. What happens if it is done incorrectly?
 6. Would you trust an AI to perform it?
 7. What would make you pay for automation?
-8. What prevented you from using Pentatopus?
+8. What prevented you from using Pentactopus?

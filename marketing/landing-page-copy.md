@@ -1,8 +1,8 @@
-# Pentatopus Landing Page Copy
+# Pentactopus Landing Page Copy
 
 **Hero Headline**: YOUR COMPUTER. CONTROLLED BY YOU — OR YOUR AI.
 **Subheading**: Control your Windows PC from Android and automate repetitive computer tasks with an AI agent that can see, act, verify, and recover.
-**Primary CTA**: Try Pentatopus Free
+**Primary CTA**: Try Pentactopus Free
 **Secondary CTA**: Watch Demo
 
 ## 3 Core Use Cases

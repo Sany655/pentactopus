@@ -1,4 +1,4 @@
-"""Vercel Serverless API & Web Handler for Pentatopus.
+"""Vercel Serverless API & Web Handler for Pentactopus.
 
 Provides enterprise endpoints for:
 - User Authentication (PBKDF2 salted hashing, 7-day session tokens)
@@ -130,7 +130,7 @@ class handler(BaseHTTPRequestHandler):
                     return
 
             # 3. Default redirect to official GitHub Releases for production
-            repo_release_url = f"https://github.com/Sany655/pentatopus/releases/latest/download/{fname}"
+            repo_release_url = f"https://github.com/Sany655/pentactopus-releases/releases/latest/download/{fname}"
             self.send_response(302)
             self.send_header("Location", repo_release_url)
             self.send_header("Access-Control-Allow-Origin", "*")
@@ -160,7 +160,7 @@ class handler(BaseHTTPRequestHandler):
             return
 
         if path == "/api/user/profile":
-            email = query.get("email", ["alex@pentatopus.com"])[0]
+            email = query.get("email", ["alex@pentactopus.com"])[0]
             user = UserStore.get_user(email) or UserStore.create_or_get_user(email)
             self._send_cors(200)
             self.wfile.write(json.dumps({"user": user}).encode("utf-8"))
