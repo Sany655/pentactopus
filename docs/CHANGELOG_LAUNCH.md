@@ -1,6 +1,6 @@
-# Pentactopus v1.0.0 Launch Changelog
+# Pentatopus v1.0.0 Launch Changelog
 
-- **Brand Evolution**: Transitioned to Pentactopus with enterprise matte carbon UI.
+- **Brand Evolution**: Transitioned to Pentatopus with enterprise matte carbon UI.
 - **Security Foundation**: Implemented PBKDF2 password hashing and 15-minute brute-force lockouts.
 - **Persistence**: Added `DatabaseAdapter` for Supabase/Neon PostgreSQL support with fallback to local JSON.
 - **Monetization**: Integrated Stripe Checkout and automated webhook license provisioning.

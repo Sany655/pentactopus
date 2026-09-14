@@ -31,7 +31,7 @@ PLANS = {
     },
     "pro": {
         "id": "plan_pro",
-        "name": "Pentactopus Pro",
+        "name": "Pentatopus Pro",
         "price_usd": 12.0,
         "interval": "month",
         "stripe_price_id": os.getenv("STRIPE_PRICE_ID_PRO", "price_penta_pro_monthly"),
@@ -152,7 +152,7 @@ class BillingManager:
                             "currency": "usd",
                             "product_data": {
                                 "name": plan["name"],
-                                "description": "Pentactopus Remote Desktop Mesh + Autonomous Computer-Use Vision AI"
+                                "description": "Pentatopus Remote Desktop Mesh + Autonomous Computer-Use Vision AI"
                             },
                             "unit_amount": int(final_price * 100),
                             "recurring": {"interval": "month"}

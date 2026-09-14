@@ -1,9 +1,9 @@
-# Pentactopus
+# Pentatopus
 
 > **Autonomous Cross-Platform Computer-Use AI & High-Performance Remote Desktop Mesh**  
 > *Direct multi-device control infrastructure connecting Windows and Android with sub-10ms WebRTC streaming and multi-step vision-guided agentic execution.*
 
-[![Production Live](https://img.shields.io/badge/production-pentactopus.vercel.app-10b981.svg)](https://pentactopus.vercel.app)
+[![Production Live](https://img.shields.io/badge/production-pentatopus.vercel.app-10b981.svg)](https://pentatopus.vercel.app)
 [![Pytest Suite](https://img.shields.io/badge/pytest-50%2F50%20passed-10b981.svg)](tests/)
 [![Security](https://img.shields.io/badge/auth-PBKDF2--SHA256%20%2B%20Brute--Force%20Shield-blue.svg)](api/user_store.py)
 [![Client Binaries](https://img.shields.io/badge/apps-Tauri%20v2%20%2B%20React-purple.svg)](penta-app/)
@@ -13,10 +13,10 @@
 
 ## 📸 Production Platform Preview
 
-![Pentactopus Enterprise Platform](docs/landing_page_preview.png)
+![Pentatopus Enterprise Platform](docs/landing_page_preview.png)
 
 ### Built-in Authentication & Workstation Access
-![Pentactopus Authentication Portal](docs/auth_modal_preview.png)
+![Pentatopus Authentication Portal](docs/auth_modal_preview.png)
 
 ---
 
@@ -43,20 +43,20 @@
 
 ## 1. Executive Overview
 
-**Pentactopus** is a commercial-grade, enterprise cross-platform cognitive mesh and remote desktop infrastructure:
+**Pentatopus** is a commercial-grade, enterprise cross-platform cognitive mesh and remote desktop infrastructure:
 
 1. **Autonomous Computer-Use Vision AI**: Multi-step perception and action agents that analyze screen frames pixel-by-pixel, reason with multimodal vision models (Gemini 2.5 Flash, Claude 3.5 Sonnet, GPT-4o, Groq Llama 3, local Ollama), and execute complex multi-step workflows.
 2. **High-Performance Remote Desktop Mesh**: Sub-10ms peer-to-peer WebRTC streaming canvas with hardware-accelerated mouse/touch event injection, tactile navigation, and bidirectional clipboard synchronization.
 
 ### Operational Modes
 * **Standalone Native Mode (Zero Local Server)**: Ultra-lightweight client binaries built with **Tauri v2 + Vite + React** (~12 MB installer, ~35 MB RAM).
-* **Cloud Platform Mode**: Globally deployed serverless platform on **Vercel** (`https://pentactopus.vercel.app`) with authentication, Stripe checkout, dynamic pricing, and admin governance.
+* **Cloud Platform Mode**: Globally deployed serverless platform on **Vercel** (`https://pentatopus.vercel.app`) with authentication, Stripe checkout, dynamic pricing, and admin governance.
 
 ---
 
 ## 2. Security & Authentication Architecture
 
-Pentactopus is built with enterprise security at its core:
+Pentatopus is built with enterprise security at its core:
 
 ### Salted PBKDF2 Password Hashing
 - Uses standard library `hashlib.pbkdf2_hmac` with **100,000 rounds of SHA-256** and unique **16-byte cryptographically secure random salts**.
@@ -82,7 +82,7 @@ Pentactopus is built with enterprise security at its core:
 
 ```mermaid
 graph TB
-    subgraph CloudRelay["Vercel Cloud Serverless Platform (https://pentactopus.vercel.app)"]
+    subgraph CloudRelay["Vercel Cloud Serverless Platform (https://pentatopus.vercel.app)"]
         LP["Landing Page & Download Center<br/>(Windows .exe & Android .apk)"]
         AuthEng["Authentication & Session Engine<br/>(/api/auth/login, /register, /me)"]
         CostCalc["Dynamic Unit Economics Calculator<br/>(AI Tokens + TURN Bandwidth + Cloud)"]
@@ -125,8 +125,8 @@ graph TB
 | Plan | Price | Devices | Features |
 | :--- | :--- | :--- | :--- |
 | **Free Starter** | $0 / mo | 1 Device | Local network remote control, BYOK AI inference. |
-| **Pentactopus Pro** | $12 / mo | 5 Devices | Unlimited P2P WebRTC remote desktop, 2,000 monthly AI steps, cloud clipboard sync. |
-| **Pentactopus Team** | $29 / mo | Unlimited | Multi-agent organization bus, dedicated TURN relays, priority support. |
+| **Pentatopus Pro** | $12 / mo | 5 Devices | Unlimited P2P WebRTC remote desktop, 2,000 monthly AI steps, cloud clipboard sync. |
+| **Pentatopus Team** | $29 / mo | Unlimited | Multi-agent organization bus, dedicated TURN relays, priority support. |
 
 ---
 
@@ -148,8 +148,8 @@ Located in `penta-app/`:
 ### Setup
 ```bash
 # Clone the repository
-git clone https://github.com/Sany655/pentactopus.git
-cd pentactopus
+git clone https://github.com/Sany655/pentatopus.git
+cd pentatopus
 
 # Install dependencies
 pip install -r requirements.txt
@@ -230,7 +230,7 @@ tests/test_user_roles_and_admin.py::test_admin_html_renders_user_management PASS
 
 ## 9. Live Production Health (25/25 Endpoints Verified)
 
-Audit executed against `https://pentactopus.vercel.app`:
+Audit executed against `https://pentatopus.vercel.app`:
 - **Static Pages**: `/`, `/login`, `/register`, `/dashboard`, `/admin` $\rightarrow$ `HTTP 200`
 - **Authentication**: `POST /api/auth/register`, `POST /api/auth/login`, `GET /api/auth/me` $\rightarrow$ `HTTP 200`
 - **Brute-Force Shield**: 5th consecutive failed login attempt $\rightarrow$ `HTTP 429 Too Many Requests` (Account locked)
@@ -245,7 +245,7 @@ Audit executed against `https://pentactopus.vercel.app`:
 ## 10. Project Directory Structure
 
 ```
-pentactopus/
+pentatopus/
 ├── .github/
 │   └── workflows/
 │       └── build-clients.yml     # Automated CI/CD release pipeline for Tauri binaries

@@ -1,4 +1,4 @@
-# Pentactopus UX System
+# Pentatopus UX System
 
 ## 1. Design Tokens
 The overarching visual theme is Matte Carbon. It is designed to feel like high-performance developer tooling rather than a generic consumer app.

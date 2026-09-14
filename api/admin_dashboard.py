@@ -1,4 +1,4 @@
-"""Admin Dashboard & Governance Console for Pentactopus.
+"""Admin Dashboard & Governance Console for Pentatopus.
 
 Provides telemetry, user RBAC administration, promo code management,
 and device mesh monitoring with session-based and secret-based authorization.
@@ -15,7 +15,7 @@ from hub.device_hub import DeviceHub
 
 ADMIN_SECRET = os.getenv("ADMIN_SECRET_KEY", "penta_admin_secret_2026")
 
-PENTACTOPUS_LOGO_SVG = """<svg width="24" height="24" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+PENTATOPUS_LOGO_SVG = """<svg width="24" height="24" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
   <circle cx="16" cy="16" r="5" fill="#3b82f6" stroke="#60a5fa" stroke-width="1.5"/>
   <circle cx="16" cy="5" r="2.5" fill="#94a3b8"/>
   <circle cx="26" cy="12" r="2.5" fill="#94a3b8"/>
@@ -95,7 +95,7 @@ class AdminDashboard:
             if role != "admin":
                 actions.append(f'<button class="btn btn-sm btn-accent" onclick="setUserRole(\'{email}\', \'admin\', \'enterprise\')">Make Admin</button>')
             else:
-                if email != "admin@pentactopus.com":
+                if email != "admin@pentatopus.com":
                     actions.append(f'<button class="btn btn-sm" onclick="setUserRole(\'{email}\', \'subscriber\', \'pro\')">Demote</button>')
 
             if role != "subscriber":
@@ -154,7 +154,7 @@ class AdminDashboard:
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Pentactopus | Admin Governance Console</title>
+  <title>Pentatopus | Admin Governance Console</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -260,8 +260,8 @@ class AdminDashboard:
   <div class="container">
     <header>
       <div class="brand">
-        {PENTACTOPUS_LOGO_SVG}
-        <h1>Pentactopus Governance Console</h1>
+        {PENTATOPUS_LOGO_SVG}
+        <h1>Pentatopus Governance Console</h1>
       </div>
       <div class="nav-links">
         <a href="/">Platform Home</a>

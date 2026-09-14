@@ -19,7 +19,7 @@ def test_database_adapter_fallback_and_safety():
 
 def test_stripe_webhook_processing_and_user_upgrade():
     """Verify Stripe webhook processes checkout.session.completed and provisions user."""
-    test_email = "stripe_customer_auto@pentactopus.com"
+    test_email = "stripe_customer_auto@pentatopus.com"
     UserStore.create_or_get_user(test_email, name="Stripe Customer")
     
     mock_payload = json.dumps({

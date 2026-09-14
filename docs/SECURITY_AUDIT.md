@@ -1,4 +1,4 @@
-# Pentactopus Security Audit
+# Pentatopus Security Audit
 
 ## CRITICAL
 *None currently identified post-refactor.* Password hashing, session tokens, and route guards have been successfully implemented and tested.

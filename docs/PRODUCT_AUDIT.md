@@ -1,4 +1,4 @@
-# Pentactopus Product Audit
+# Pentatopus Product Audit
 
 ## Current Architecture
 - **Frontend/Web UI**: Pure HTML/CSS/JS served via Python (`api/web_template.py`), deployed as serverless functions on Vercel.

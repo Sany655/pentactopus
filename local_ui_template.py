@@ -2,7 +2,7 @@ LOCAL_UI_HTML = '''<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Pentactopus PC Agent</title>
+  <title>Pentatopus PC Agent</title>
   <style>
     :root { --bg: #000; --panel: #09090b; --border: #27272a; --text: #e4e4e7; --accent: #3b82f6; }
     body { font-family: -apple-system, system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 24px; }
@@ -26,7 +26,7 @@ LOCAL_UI_HTML = '''<!DOCTYPE html>
         <circle cx="16" cy="16" r="5" fill="#3b82f6" stroke="#60a5fa" stroke-width="1.5"/>
         <path d="M16 11V7.5M20 13.5L23.5 13M18.5 19.5L20.5 23M13.5 19.5L11.5 23M12 13.5L8.5 13" stroke="#475569" stroke-width="1.5" stroke-linecap="round"/>
       </svg>
-      <h2 style="margin:0; font-size:20px; font-weight: 700;">Pentactopus PC Agent</h2>
+      <h2 style="margin:0; font-size:20px; font-weight: 700;">Pentatopus PC Agent</h2>
     </div>
     <div style="display:flex; align-items:center;">
       <span class="status-dot"></span><span style="font-size:13px; color:#a1a1aa; font-weight:500;">Daemon Active</span>
@@ -59,7 +59,7 @@ LOCAL_UI_HTML = '''<!DOCTYPE html>
 
   <h3 style="font-size:12px; color:#71717a; text-transform:uppercase; margin-top:24px; margin-bottom:10px; letter-spacing:0.5px;">Daemon Event Log</h3>
   <div class="terminal" id="terminal">
-    [SYS] Pentactopus Desktop Agent Initialized.<br>
+    [SYS] Pentatopus Desktop Agent Initialized.<br>
     [SYS] Awaiting cloud commands or local input...<br>
   </div>
 

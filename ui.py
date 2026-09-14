@@ -803,13 +803,13 @@ def run_server():
 
 def main():
     print("="*65)
-    print(f"  PENTACTOPUS NATIVE COMMAND HUB RUNNING")
+    print(f"  PENTATOPUS NATIVE COMMAND HUB RUNNING")
     print("="*65)
     
     server_thread = threading.Thread(target=run_server, daemon=True)
     server_thread.start()
     
-    webview.create_window("Pentactopus Assistant", f"http://localhost:{PORT}", width=1200, height=800)
+    webview.create_window("Pentatopus Assistant", f"http://localhost:{PORT}", width=1200, height=800)
     webview.start()
 
 if __name__ == "__main__":

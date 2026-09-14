@@ -10,17 +10,17 @@ def test_seed_users_initialization():
     users = UserStore.list_users()
     assert len(users) >= 3
 
-    admin = UserStore.get_user("admin@pentactopus.com")
+    admin = UserStore.get_user("admin@pentatopus.com")
     assert admin is not None
     assert admin["role"] == "admin"
     assert admin["plan"] == "enterprise"
 
-    alex = UserStore.get_user("alex@pentactopus.com")
+    alex = UserStore.get_user("alex@pentatopus.com")
     assert alex is not None
     assert alex["role"] == "subscriber"
     assert alex["plan"] == "pro"
 
-    guest = UserStore.get_user("guest@pentactopus.com")
+    guest = UserStore.get_user("guest@pentatopus.com")
     assert guest is not None
     assert guest["role"] == "free_user"
     assert guest["plan"] == "free"
@@ -68,8 +68,8 @@ def test_associate_coupon_redemption():
 def test_admin_html_renders_user_management():
     html = AdminDashboard.render_admin_html()
     assert "User Accounts & Roles (RBAC)" in html
-    assert "admin@pentactopus.com" in html
-    assert "alex@pentactopus.com" in html
+    assert "admin@pentatopus.com" in html
+    assert "alex@pentatopus.com" in html
     assert "PRO SUBSCRIBER" in html
     assert "Promo & Coupon Engine" in html
     assert "Active Device Mesh Nodes" in html

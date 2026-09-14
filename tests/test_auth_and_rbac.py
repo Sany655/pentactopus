@@ -1,4 +1,4 @@
-"""Comprehensive Tests for Pentactopus Authentication, Password Hashing,
+"""Comprehensive Tests for Pentatopus Authentication, Password Hashing,
 Brute-Force Lockout Shields, RBAC Access, and Zero-Brand-Infringement Auditing.
 """
 
@@ -23,7 +23,7 @@ def test_pbkdf2_password_hashing():
     assert verify_password("WrongPassword!", h) is False
 
 def test_user_registration_and_safe_serialization():
-    email = f"user_{int(time.time() * 1000)}@pentactopus.com"
+    email = f"user_{int(time.time() * 1000)}@pentatopus.com"
     user, token = UserStore.register_user(
         name="Jordan Lee",
         email=email,
@@ -44,7 +44,7 @@ def test_user_registration_and_safe_serialization():
         )
 
 def test_authentication_flow_and_session_lifecycle():
-    email = f"authuser_{int(time.time() * 1000)}@pentactopus.com"
+    email = f"authuser_{int(time.time() * 1000)}@pentatopus.com"
     pwd = "ValidPassword2026!"
     UserStore.register_user(name="Auth Tester", email=email, password=pwd)
 
@@ -63,7 +63,7 @@ def test_authentication_flow_and_session_lifecycle():
     assert UserStore.validate_session(token) is None
 
 def test_brute_force_lockout_shield():
-    email = f"victim_{int(time.time() * 1000)}@pentactopus.com"
+    email = f"victim_{int(time.time() * 1000)}@pentatopus.com"
     UserStore.register_user(name="Victim", email=email, password="RealPassword2026!")
     ip = "10.0.0.99"
 
@@ -88,12 +88,12 @@ def test_admin_rbac_authorization():
     assert AdminDashboard.verify_auth("Bearer wrong_secret") is False
 
     # Admin user session token authorizes
-    admin_user, admin_token = UserStore.authenticate_user("admin@pentactopus.com", "PentaAdmin2026!")
+    admin_user, admin_token = UserStore.authenticate_user("admin@pentatopus.com", "PentaAdmin2026!")
     assert AdminDashboard.verify_auth(admin_token) is True
     assert AdminDashboard.verify_auth(f"Bearer {admin_token}") is True
 
     # Regular subscriber session token is REJECTED from admin
-    pro_user, pro_token = UserStore.authenticate_user("alex@pentactopus.com", "PentaPro2026!")
+    pro_user, pro_token = UserStore.authenticate_user("alex@pentatopus.com", "PentaPro2026!")
     assert AdminDashboard.verify_auth(pro_token) is False
     assert AdminDashboard.verify_auth(f"Bearer {pro_token}") is False
 

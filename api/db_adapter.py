@@ -1,4 +1,4 @@
-"""Persistent Cloud Database Adapter for Pentactopus.
+"""Persistent Cloud Database Adapter for Pentatopus.
 
 Provides transparent multi-backend persistence:
 - Managed PostgreSQL (Supabase, Neon, AWS RDS, Railway, Render) via DATABASE_URL
@@ -11,7 +11,7 @@ import time
 import logging
 from typing import Dict, Any, List, Optional
 
-logger = logging.getLogger("pentactopus.db")
+logger = logging.getLogger("pentatopus.db")
 
 try:
     import psycopg2
