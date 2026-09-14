@@ -12,6 +12,7 @@ import hashlib
 import hmac
 import secrets
 from typing import Dict, Any, List, Optional, Tuple
+from api.db_adapter import DatabaseAdapter
 
 # Serverless writable path
 if os.getenv("VERCEL") or os.name != "nt":
@@ -120,6 +121,13 @@ class UserStore:
         if cls._mem_users:
             return cls._mem_users
 
+        # 1. Check PostgreSQL / Supabase if DATABASE_URL is configured
+        db_users = DatabaseAdapter.load_users()
+        if db_users:
+            cls._mem_users = db_users
+            return cls._mem_users
+
+        # 2. Check local file storage
         if os.path.isfile(USERS_FILE):
             try:
                 with open(USERS_FILE, "r", encoding="utf-8") as f:
@@ -143,9 +151,19 @@ class UserStore:
         except Exception:
             pass
 
+        # Persist to database if configured
+        if DatabaseAdapter.is_postgres_configured():
+            for u in users.values():
+                DatabaseAdapter.save_user(u)
+
     @classmethod
     def _load_sessions(cls) -> Dict[str, Dict[str, Any]]:
         if cls._mem_sessions:
+            return cls._mem_sessions
+
+        db_sessions = DatabaseAdapter.load_sessions()
+        if db_sessions:
+            cls._mem_sessions = db_sessions
             return cls._mem_sessions
 
         if os.path.isfile(SESSIONS_FILE):
@@ -165,6 +183,10 @@ class UserStore:
                 json.dump(sessions, f, indent=2)
         except Exception:
             pass
+
+        if DatabaseAdapter.is_postgres_configured():
+            for s in sessions.values():
+                DatabaseAdapter.save_session(s)
 
     @classmethod
     def check_brute_force(cls, key: str) -> None:
@@ -322,6 +344,7 @@ class UserStore:
         if cleaned in sessions:
             sessions.pop(cleaned)
             cls._save_sessions(sessions)
+            DatabaseAdapter.delete_session(cleaned)
             return True
         return False
 

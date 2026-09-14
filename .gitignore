@@ -28,9 +28,12 @@ yarn-error.log*
 penta-app/node_modules/
 penta-app/dist/
 
-# Rust & Tauri build artifacts
+# Rust & Tauri & PyInstaller build artifacts
 penta-app/src-tauri/target/
 target/
+build/
+dist/
+*.spec
 
 # OS Specific
 Thumbs.db

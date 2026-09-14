@@ -223,6 +223,6 @@ class BillingManager:
                 "active": True
             }
             CouponManager._save_licenses(licenses)
-            return {"success": True, "action": "license_provisioned", "license_key": lic_key}
+            return {"success": True, "action": "license_provisioned", "license_key": lic_key, "user_email": email}
 
         return {"success": True, "event": event_type}

@@ -59,12 +59,45 @@ class handler(BaseHTTPRequestHandler):
 
         if path.startswith("/download/"):
             fname = os.path.basename(path)
-            self.send_response(200)
-            self.send_header("Content-Disposition", f'attachment; filename="{fname}"')
-            self.send_header("Content-Type", "application/octet-stream")
+            # 1. Custom URL overrides via environment variables
+            if fname.endswith(".exe") and os.getenv("RELEASE_DOWNLOAD_EXE_URL"):
+                self.send_response(302)
+                self.send_header("Location", os.getenv("RELEASE_DOWNLOAD_EXE_URL"))
+                self.end_headers()
+                return
+
+            if fname.endswith(".apk") and os.getenv("RELEASE_DOWNLOAD_APK_URL"):
+                self.send_response(302)
+                self.send_header("Location", os.getenv("RELEASE_DOWNLOAD_APK_URL"))
+                self.end_headers()
+                return
+
+            # 2. Check local dist or static downloads directory
+            local_paths = [
+                os.path.join(BASE_DIR, "dist", fname),
+                os.path.join(BASE_DIR, "static", "downloads", fname)
+            ]
+            for lp in local_paths:
+                if os.path.isfile(lp):
+                    content_type = "application/vnd.microsoft.portable-executable" if fname.endswith(".exe") else "application/vnd.android.package-archive"
+                    file_size = os.path.getsize(lp)
+                    self.send_response(200)
+                    self.send_header("Content-Disposition", f'attachment; filename="{fname}"')
+                    self.send_header("Content-Type", content_type)
+                    self.send_header("Content-Length", str(file_size))
+                    self.send_header("Access-Control-Allow-Origin", "*")
+                    self.end_headers()
+                    with open(lp, "rb") as bf:
+                        while chunk := bf.read(65536):
+                            self.wfile.write(chunk)
+                    return
+
+            # 3. Default redirect to official GitHub Releases for production
+            repo_release_url = f"https://github.com/Sany655/pentactopus/releases/latest/download/{fname}"
+            self.send_response(302)
+            self.send_header("Location", repo_release_url)
             self.send_header("Access-Control-Allow-Origin", "*")
             self.end_headers()
-            self.wfile.write(f"Pentactopus installer stream for {fname}".encode("utf-8"))
             return
 
         # Auth Session Validation
@@ -261,6 +294,23 @@ class handler(BaseHTTPRequestHandler):
                 coupon_code=data.get("coupon_code")
             )
             self._send_cors(200)
+            self.wfile.write(json.dumps(res).encode("utf-8"))
+            return
+
+        if path == "/api/stripe/webhook":
+            sig_header = self.headers.get("Stripe-Signature", "")
+            res = BillingManager.handle_webhook_event(raw_body, sig_header)
+            if res.get("success"):
+                if res.get("action") == "license_provisioned":
+                    try:
+                        email = res.get("user_email")
+                        if email:
+                            UserStore.update_role(email, role="subscriber", plan="pro")
+                    except Exception:
+                        pass
+                self._send_cors(200)
+            else:
+                self._send_cors(400)
             self.wfile.write(json.dumps(res).encode("utf-8"))
             return
 
