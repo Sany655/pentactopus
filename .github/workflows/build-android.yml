@@ -1,0 +1,59 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build-android:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android, armv7-linux-androideabi, i686-linux-android, x86_64-linux-android
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Setup Android NDK
+        run: |
+          echo "y" | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install "ndk;25.1.8937393"
+          echo "NDK_HOME=$ANDROID_HOME/ndk/25.1.8937393" >> $GITHUB_ENV
+
+      - name: Install dependencies
+        working-directory: ./penta-app
+        run: npm install
+
+      - name: Initialize Android Project
+        working-directory: ./penta-app
+        run: |
+          if [ ! -d "src-tauri/gen/android" ]; then
+            npx tauri android init --ci || echo "Init failed but continuing"
+          fi
+
+      - name: Build Android APK
+        working-directory: ./penta-app
+        run: npx tauri android build
+
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PentaAssistant-Android
+          path: penta-app/src-tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-release.apk
