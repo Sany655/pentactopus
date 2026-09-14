@@ -72,8 +72,9 @@ class handler(BaseHTTPRequestHandler):
                 self.end_headers()
                 return
 
-            # 2. Check local dist or static downloads directory
+            # 2. Check local dist, root, or static downloads directory
             local_paths = [
+                os.path.join(BASE_DIR, fname),
                 os.path.join(BASE_DIR, "dist", fname),
                 os.path.join(BASE_DIR, "static", "downloads", fname)
             ]
