@@ -10,69 +10,103 @@ import time
 import uuid
 from typing import Dict, Any, List, Optional
 
-DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data")
+# In Vercel / serverless environments, /var/task is read-only.
+# /tmp is the standard writable directory across all serverless providers.
+if os.getenv("VERCEL") or os.name != "nt":
+    DATA_DIR = "/tmp/penta_data"
+else:
+    DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data")
+
+try:
+    os.makedirs(DATA_DIR, exist_ok=True)
+except Exception:
+    DATA_DIR = "/tmp/penta_data"
+    os.makedirs(DATA_DIR, exist_ok=True)
+
 COUPONS_FILE = os.path.join(DATA_DIR, "coupons.json")
 LICENSES_FILE = os.path.join(DATA_DIR, "licenses.json")
 
-os.makedirs(DATA_DIR, exist_ok=True)
-
 class CouponManager:
+    _mem_coupons: Dict[str, Dict[str, Any]] = {}
+    _mem_licenses: Dict[str, Dict[str, Any]] = {}
+
+    @classmethod
+    def _get_seed_coupons(cls) -> Dict[str, Dict[str, Any]]:
+        return {
+            "PENTAFREE": {
+                "code": "PENTAFREE",
+                "discount_type": "free_trial",
+                "value": 365,
+                "max_uses": 1000,
+                "current_uses": 0,
+                "expires_at": time.time() + (365 * 86400),
+                "enabled": True,
+                "created_at": time.time(),
+                "notes": "Launch 100% Free Pro Access"
+            },
+            "LAUNCH50": {
+                "code": "LAUNCH50",
+                "discount_type": "percent",
+                "value": 50,
+                "max_uses": 500,
+                "current_uses": 0,
+                "expires_at": time.time() + (180 * 86400),
+                "enabled": True,
+                "created_at": time.time(),
+                "notes": "50% Early Bird Discount"
+            }
+        }
+
     @classmethod
     def _load_coupons(cls) -> Dict[str, Dict[str, Any]]:
+        if cls._mem_coupons:
+            return cls._mem_coupons
+
         if not os.path.isfile(COUPONS_FILE):
-            # Seed with default launch coupons
-            initial = {
-                "PENTAFREE": {
-                    "code": "PENTAFREE",
-                    "discount_type": "free_trial",
-                    "value": 365, # 1 year full free pro access
-                    "max_uses": 1000,
-                    "current_uses": 0,
-                    "expires_at": time.time() + (365 * 86400),
-                    "enabled": True,
-                    "created_at": time.time(),
-                    "notes": "Launch 100% Free Pro Access"
-                },
-                "LAUNCH50": {
-                    "code": "LAUNCH50",
-                    "discount_type": "percent",
-                    "value": 50, # 50% off
-                    "max_uses": 500,
-                    "current_uses": 0,
-                    "expires_at": time.time() + (180 * 86400),
-                    "enabled": True,
-                    "created_at": time.time(),
-                    "notes": "50% Early Bird Discount"
-                }
-            }
+            initial = cls._get_seed_coupons()
+            cls._mem_coupons = dict(initial)
             cls._save_coupons(initial)
-            return initial
+            return cls._mem_coupons
 
         try:
             with open(COUPONS_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
+                cls._mem_coupons = json.load(f)
+                return cls._mem_coupons
         except Exception:
-            return {}
+            if not cls._mem_coupons:
+                cls._mem_coupons = cls._get_seed_coupons()
+            return cls._mem_coupons
 
     @classmethod
     def _save_coupons(cls, data: Dict[str, Dict[str, Any]]):
-        with open(COUPONS_FILE, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=2)
+        cls._mem_coupons = dict(data)
+        try:
+            with open(COUPONS_FILE, "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=2)
+        except Exception:
+            pass
 
     @classmethod
     def _load_licenses(cls) -> Dict[str, Dict[str, Any]]:
+        if cls._mem_licenses:
+            return cls._mem_licenses
         if not os.path.isfile(LICENSES_FILE):
-            return {}
+            return cls._mem_licenses
         try:
             with open(LICENSES_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
+                cls._mem_licenses = json.load(f)
+                return cls._mem_licenses
         except Exception:
-            return {}
+            return cls._mem_licenses
 
     @classmethod
     def _save_licenses(cls, data: Dict[str, Dict[str, Any]]):
-        with open(LICENSES_FILE, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=2)
+        cls._mem_licenses = dict(data)
+        try:
+            with open(LICENSES_FILE, "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=2)
+        except Exception:
+            pass
 
     @classmethod
     def create_coupon(

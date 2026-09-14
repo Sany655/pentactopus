@@ -19,6 +19,7 @@ from hub.device_hub import DeviceHub
 from api.coupons import CouponManager
 from api.billing import BillingManager
 from api.admin_dashboard import AdminDashboard
+from ui import HTML_PAGE
 
 class handler(BaseHTTPRequestHandler):
     def log_message(self, format, *args):
@@ -41,13 +42,22 @@ class handler(BaseHTTPRequestHandler):
 
         if path in ("", "/", "/index.html"):
             self._send_cors(200, "text/html; charset=utf-8")
-            html = "<!-- Penta-Assistant Cloud Relay --><html><body><h1>Penta-Assistant Cloud Relay Active</h1></body></html>"
-            self.wfile.write(html.encode("utf-8"))
+            self.wfile.write(HTML_PAGE.encode("utf-8"))
             return
 
         if path == "/admin":
             self._send_cors(200, "text/html; charset=utf-8")
             self.wfile.write(AdminDashboard.render_admin_html().encode("utf-8"))
+            return
+
+        if path.startswith("/download/"):
+            fname = os.path.basename(path)
+            self.send_response(200)
+            self.send_header("Content-Disposition", f'attachment; filename="{fname}"')
+            self.send_header("Content-Type", "application/octet-stream")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+            self.wfile.write(f"Penta-Assistant client binary installer for {fname}".encode("utf-8"))
             return
 
         if path == "/api/admin/overview":
@@ -177,9 +187,17 @@ class handler(BaseHTTPRequestHandler):
             return
 
         if path == "/api/admin/coupons/toggle":
-            ok = CouponManager.toggle_coupon(data.get("code", ""), data.get("enabled", True))
-            self._send_cors(200)
-            self.wfile.write(json.dumps({"success": ok}).encode("utf-8"))
+            try:
+                code = data.get("code", "")
+                enabled = data.get("enabled", True)
+                if isinstance(enabled, str):
+                    enabled = enabled.lower() == "true"
+                ok = CouponManager.toggle_coupon(code, enabled)
+                self._send_cors(200)
+                self.wfile.write(json.dumps({"success": ok}).encode("utf-8"))
+            except Exception as e:
+                self._send_cors(400)
+                self.wfile.write(json.dumps({"success": False, "error": str(e)}).encode("utf-8"))
             return
 
         self._send_cors(404)

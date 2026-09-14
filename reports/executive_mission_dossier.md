@@ -8,7 +8,7 @@
 ## 1. Departmental Contributions
 * **Mobile Operations (agent.mobile)**:
   - Hardware: Redmi Note 6 Pro (`192.168.0.100:5555`)
-  - OS / Battery: Android 9 | 67%
+  - OS / Battery: Android 9 | 66%
   - Active Window: `mCurrentFocus=Window{a13ac7f u0 StatusBar}`
 
 * **Intelligence Division (agent.browser)**:
