@@ -75,11 +75,11 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
         parsed = urllib.parse.urlparse(self.path)
         path = parsed.path
 
-        if path in ["/", "/index.html", "/dashboard", "/login", "/register"]:
+        if path in ("", "/", "/index.html", "/dashboard", "/login", "/register"):
             self.send_response(200)
             self.send_header("Content-type", "text/html; charset=utf-8")
             self.end_headers()
-            self.wfile.write(HTML_PAGE.encode("utf-8"))
+            self.wfile.write(LOCAL_UI_HTML.encode("utf-8"))
 
         elif path == "/api/auth/me":
             auth = self.headers.get("Authorization", "")
@@ -791,7 +791,7 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
         except Exception as e:
             self._send_json({"success": False, "error": str(e), "output": str(e)})
 
-from api.web_template import HTML_PAGE
+from local_ui_template import LOCAL_UI_HTML
 import webview
 
 def run_server():
