@@ -118,6 +118,41 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
             self.handle_get_pc_screen()
 
         elif path == "/admin":
+            loader_html = """
+            <!DOCTYPE html>
+            <html>
+            <head><title>Admin Auth</title></head>
+            <body style="background:#000; color:#fff; font-family:sans-serif; text-align:center; padding-top:50px;">
+              <h2>Authenticating...</h2>
+              <script>
+                const token = localStorage.getItem('penta_auth_token') || localStorage.getItem('penta_admin_secret');
+                fetch('/api/admin/render', {
+                  headers: { 'Authorization': 'Bearer ' + token }
+                }).then(res => {
+                  if(res.ok) {
+                    res.text().then(html => {
+                      document.open();
+                      document.write(html);
+                      document.close();
+                    });
+                  } else {
+                    document.body.innerHTML = '<h2>Access Denied</h2><p>You do not have administrative privileges.</p><a href="/" style="color:#3b82f6;">Return Home</a>';
+                  }
+                });
+              </script>
+            </body>
+            </html>
+            """
+            self.send_response(200)
+            self.send_header("Content-type", "text/html; charset=utf-8")
+            self.end_headers()
+            self.wfile.write(loader_html.encode("utf-8"))
+
+        elif path == "/api/admin/render":
+            auth_header = self.headers.get("Authorization", "")
+            if not AdminDashboard.verify_auth(auth_header):
+                self.send_error(403, "Unauthorized")
+                return
             self.send_response(200)
             self.send_header("Content-type", "text/html; charset=utf-8")
             self.end_headers()
@@ -757,17 +792,25 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
             self._send_json({"success": False, "error": str(e), "output": str(e)})
 
 from api.web_template import HTML_PAGE
+import webview
 
-def main():
+def run_server():
     with ThreadedTCPServer(("", PORT), DashboardHandler) as httpd:
-        print("="*65)
-        print(f"  AI-AGENT COMMAND HUB RUNNING AT http://localhost:{PORT}")
-        print("="*65)
-        webbrowser.open(f"http://localhost:{PORT}")
         try:
             httpd.serve_forever()
-        except KeyboardInterrupt:
-            print("\nServer stopped.")
+        except Exception:
+            pass
+
+def main():
+    print("="*65)
+    print(f"  PENTACTOPUS NATIVE COMMAND HUB RUNNING")
+    print("="*65)
+    
+    server_thread = threading.Thread(target=run_server, daemon=True)
+    server_thread.start()
+    
+    webview.create_window("Pentactopus Assistant", f"http://localhost:{PORT}", width=1200, height=800)
+    webview.start()
 
 if __name__ == "__main__":
     main()
