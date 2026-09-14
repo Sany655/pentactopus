@@ -77,7 +77,7 @@ graph TB
     CouponEng --> AdminDash
     SignalingRelay <-->|SDP / ICE Signaling| WinTauri
     SignalingRelay <-->|SDP / ICE Signaling| MobTauri
-    WinTauri <==>|Encrypted P2P WebRTC Stream (30-60 FPS)| MobTauri
+    WinTauri <--> |Encrypted P2P WebRTC Stream (30-60 FPS)| MobTauri
 ```
 
 ---
