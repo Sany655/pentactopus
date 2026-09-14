@@ -1,4 +1,4 @@
-"""Vercel Serverless API & Web Handler for Pentactopus.
+"""Vercel Serverless API & Web Handler for Pentatopus.
 
 Provides enterprise endpoints for:
 - User Authentication (PBKDF2 salted hashing, 7-day session tokens)
@@ -53,6 +53,41 @@ class handler(BaseHTTPRequestHandler):
             return
 
         if path == "/admin":
+            loader_html = """
+            <!DOCTYPE html>
+            <html>
+            <head><title>Admin Auth</title></head>
+            <body style="background:#000; color:#fff; font-family:sans-serif; text-align:center; padding-top:50px;">
+              <h2>Authenticating...</h2>
+              <script>
+                const token = localStorage.getItem('penta_auth_token') || localStorage.getItem('penta_admin_secret');
+                fetch('/api/admin/render', {
+                  headers: { 'Authorization': 'Bearer ' + token }
+                }).then(res => {
+                  if(res.ok) {
+                    res.text().then(html => {
+                      document.open();
+                      document.write(html);
+                      document.close();
+                    });
+                  } else {
+                    document.body.innerHTML = '<h2>Access Denied</h2><p>You do not have administrative privileges.</p><a href="/" style="color:#3b82f6;">Return Home</a>';
+                  }
+                });
+              </script>
+            </body>
+            </html>
+            """
+            self._send_cors(200, "text/html; charset=utf-8")
+            self.wfile.write(loader_html.encode("utf-8"))
+            return
+
+        if path == "/api/admin/render":
+            auth_header = self.headers.get("Authorization", "")
+            if not AdminDashboard.verify_auth(auth_header):
+                self._send_cors(403)
+                self.wfile.write(b"Unauthorized")
+                return
             self._send_cors(200, "text/html; charset=utf-8")
             self.wfile.write(AdminDashboard.render_admin_html().encode("utf-8"))
             return
@@ -124,7 +159,7 @@ class handler(BaseHTTPRequestHandler):
             return
 
         if path == "/api/user/profile":
-            email = query.get("email", ["alex@pentactopus.com"])[0]
+            email = query.get("email", ["alex@pentatopus.com"])[0]
             user = UserStore.get_user(email) or UserStore.create_or_get_user(email)
             self._send_cors(200)
             self.wfile.write(json.dumps({"user": user}).encode("utf-8"))
