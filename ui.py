@@ -37,6 +37,7 @@ from hub.device_hub import DeviceHub
 from api.coupons import CouponManager
 from api.billing import BillingManager, PLANS
 from api.admin_dashboard import AdminDashboard
+from api.user_store import UserStore
 
 REPORTS_DIR = os.path.join(BASE_DIR, "reports")
 os.makedirs(REPORTS_DIR, exist_ok=True)
@@ -74,7 +75,7 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
         parsed = urllib.parse.urlparse(self.path)
         path = parsed.path
 
-        if path == "/" or path == "/index.html":
+        if path in ["/", "/index.html", "/dashboard"]:
             self.send_response(200)
             self.send_header("Content-type", "text/html; charset=utf-8")
             self.end_headers()
@@ -107,6 +108,7 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
 
         elif path == "/api/pc/screen":
             self.handle_get_pc_screen()
+
         elif path == "/admin":
             self.send_response(200)
             self.send_header("Content-type", "text/html; charset=utf-8")
@@ -115,6 +117,15 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
 
         elif path == "/api/admin/overview":
             self._send_json(AdminDashboard.get_overview_metrics())
+
+        elif path == "/api/admin/users":
+            self._send_json({"users": UserStore.list_users()})
+
+        elif path == "/api/user/profile":
+            query = urllib.parse.parse_qs(parsed.query)
+            email = query.get("email", ["alex@pro.com"])[0]
+            user = UserStore.get_user(email) or UserStore.create_or_get_user(email)
+            self._send_json({"user": user})
 
         elif path == "/api/admin/coupons/list":
             self._send_json({"coupons": CouponManager.list_coupons()})
@@ -126,7 +137,6 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
             self.send_header("Content-Type", "application/octet-stream")
             self.end_headers()
             self.wfile.write(f"Mock binary installer data for {fname}".encode("utf-8"))
-
 
         else:
             self.send_error(404, "Not found")
@@ -188,8 +198,23 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
             ok = CouponManager.toggle_coupon(data.get("code", ""), data.get("enabled", True))
             self._send_json({"success": ok})
 
+        elif path == "/api/admin/user/role":
+            try:
+                user = UserStore.update_role(data.get("email"), data.get("role"), data.get("plan"))
+                self._send_json({"success": True, "user": user})
+            except Exception as e:
+                self._send_json({"success": False, "error": str(e)})
+
         elif path == "/api/coupons/redeem":
-            res = CouponManager.redeem_coupon(data.get("code", ""), data.get("email"))
+            email = data.get("email")
+            res = CouponManager.redeem_coupon(data.get("code", ""), email)
+            if res.get("valid") and email:
+                UserStore.associate_coupon_redemption(
+                    email=email,
+                    coupon_code=data.get("code", ""),
+                    license_key=res.get("license_key", ""),
+                    days=res.get("days", 365)
+                )
             self._send_json(res)
 
         elif path == "/api/billing/calculate":
