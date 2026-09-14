@@ -30,13 +30,13 @@ HTML_PAGE = f"""<!DOCTYPE html>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     :root {{
-      --bg: #09090b;
-      --card-bg: #111114;
-      --card-border: rgba(255, 255, 255, 0.08);
-      --card-border-hover: rgba(255, 255, 255, 0.16);
+      --bg: #000000;
+      --card-bg: #09090b;
+      --card-border: #27272a;
+      --card-border-hover: #3f3f46;
       --text: #a1a1aa;
       --text-muted: #71717a;
-      --heading: #f4f4f5;
+      --heading: #e4e4e7;
       --accent: #3b82f6;
       --accent-hover: #2563eb;
       --green: #10b981;
@@ -510,11 +510,11 @@ HTML_PAGE = f"""<!DOCTYPE html>
           <div style="font-size: 12px; margin-top: 12px;">
             <div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--card-border);">
               <div><strong>Windows Workstation</strong> (1920x1080)</div>
-              <button class="btn btn-sm btn-accent" onclick="alert('Initiating P2P WebRTC DataChannel to Windows Workstation...')">Connect</button>
+              <button class="btn btn-sm" disabled style="opacity:0.5; cursor:not-allowed;" title="Real-time WebRTC streaming is on the roadmap.">WebRTC (Roadmap)</button>
             </div>
             <div style="display:flex; justify-content:space-between; padding:8px 0;">
               <div><strong>Android Mobile Node</strong> (1080x2400)</div>
-              <button class="btn btn-sm" onclick="alert('Initiating direct mobile viewport mirroring...')">Remote Control</button>
+              <button class="btn btn-sm btn-accent" onclick="alert('Mobile viewport stream currently accessible via native clients (Polling). Cloud viewport is on the roadmap.')">Remote (Beta)</button>
             </div>
           </div>
         </div>
