@@ -549,18 +549,17 @@ HTML_PAGE = f"""<!DOCTYPE html>
   <section class="hero container" id="platform">
     <div class="hero-badge">
       <span class="dot"></span>
-      <span>Pentactopus v2.5 Enterprise Production</span>
+      <span>Pentactopus Beta</span>
     </div>
     <h1 class="hero-title">
-      Autonomous Cross-Platform Computer-Use AI & Remote Desktop Mesh
+      YOUR COMPUTER. CONTROLLED BY YOU — OR YOUR AI.
     </h1>
     <p class="hero-subtitle">
-      Direct multi-device control infrastructure connecting Windows and Android. Sub-10ms WebRTC streaming combined with multi-step vision-guided agentic execution.
+      Control your Windows PC from Android and automate repetitive computer tasks with an AI agent that can see, act, verify, and recover.
     </p>
     <div class="hero-actions">
-      <a href="/download/PentaAssistant-Setup.exe" class="btn btn-primary">Download Windows Client</a>
-      <a href="/download/PentaAssistant.apk" class="btn">Download Android Client</a>
-      <button class="btn btn-accent" onclick="openAuthModal('register')">Create Enterprise Account</button>
+      <button class="btn btn-primary" onclick="openAuthModal('register')">Try Pentactopus Free</button>
+      <button class="btn" onclick="alert('Demo video coming soon!')">Watch Demo</button>
     </div>
 
     <!-- Technical Architecture Blueprint -->

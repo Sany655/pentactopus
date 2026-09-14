@@ -1,6 +1,6 @@
 # Penta-Assistant: User Manual & Technical Guide
 
-**Penta-Assistant** combines the agentic intelligence of **Google Antigravity** on Windows with **AnyDesk-style cross-platform remote viewing and tactile control** across your Windows PC and Android phone, backed by a **Vercel Cloud Serverless Hub** and local device daemons.
+**Penta-Assistant** combines advanced agentic intelligence on Windows with **cross-platform remote viewing and tactile control** across your Windows PC and Android phone, backed by a **Vercel Cloud Serverless Hub** and local device daemons.
 
 ---
 
@@ -50,7 +50,7 @@ python ui.py
 
 ### Dashboard Sections
 1. **Top Bar**:
-   - **Connection Badges**: Displays device state and `🤖 Google Antigravity + 📡 AnyDesk` status.
+   - **Connection Badges**: Displays device state and `🤖 Agent + 📡 Remote` status.
    - **📱 Launch scrcpy Mirror**: Opens the low-latency native phone mirror window on Windows.
    - **📶 Switch to Wi-Fi**: Automatically pairs your USB-connected phone to Wi-Fi mode.
    - **🔄 Scan Devices**: Refreshes ADB and device mesh states.
@@ -59,7 +59,7 @@ python ui.py
    - **Unified Model Configuration**: Switch between Gemini 2.5, Claude 3.5, GPT-4o, Groq Llama 3, DeepSeek, OpenRouter, and Ollama.
    - **Live Screen Capture**: Quick thumbnail preview of the active device.
 3. **Right Panel (Tabs)**:
-   - **📡 AnyDesk Remote Viewport**:
+   - **📡 Remote Viewport**:
      - **Sub-Device Switcher**: Seamlessly toggle between `🖥️ Windows PC (Host)` and `📱 Android Phone (Node)`.
      - **When Windows PC is Active**:
        - Live desktop stream with tap-to-click.
