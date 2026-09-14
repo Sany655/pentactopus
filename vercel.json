@@ -7,9 +7,12 @@
     }
   ],
   "rewrites": [
-    {
-      "source": "/(.*)",
-      "destination": "/api/index.py"
-    }
+    { "source": "/api/(.*)", "destination": "/api/index.py" },
+    { "source": "/dashboard", "destination": "/api/index.py" },
+    { "source": "/login", "destination": "/api/index.py" },
+    { "source": "/register", "destination": "/api/index.py" },
+    { "source": "/admin", "destination": "/api/index.py" },
+    { "source": "/index.html", "destination": "/api/index.py" },
+    { "source": "/", "destination": "/api/index.py" }
   ]
 }
