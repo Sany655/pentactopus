@@ -1,7 +1,8 @@
 """Vercel Serverless API & Web Handler for Penta-Assistant.
 
 Provides global cloud-hosted endpoints for device discovery, AnyDesk-style
-screen streaming, action dispatch, and Google Antigravity multi-model AI.
+screen streaming, action dispatch, Google Antigravity multi-model AI,
+Stripe subscription billing, promo code redemption, and RBAC user management.
 """
 
 from http.server import BaseHTTPRequestHandler
@@ -19,6 +20,7 @@ from hub.device_hub import DeviceHub
 from api.coupons import CouponManager
 from api.billing import BillingManager
 from api.admin_dashboard import AdminDashboard
+from api.user_store import UserStore
 from api.web_template import HTML_PAGE
 
 class handler(BaseHTTPRequestHandler):
@@ -39,8 +41,9 @@ class handler(BaseHTTPRequestHandler):
     def do_GET(self):
         parsed = urllib.parse.urlparse(self.path)
         path = parsed.path
+        query = urllib.parse.parse_qs(parsed.query)
 
-        if path in ("", "/", "/index.html"):
+        if path in ("", "/", "/index.html", "/dashboard"):
             self._send_cors(200, "text/html; charset=utf-8")
             self.wfile.write(HTML_PAGE.encode("utf-8"))
             return
@@ -63,6 +66,18 @@ class handler(BaseHTTPRequestHandler):
         if path == "/api/admin/overview":
             self._send_cors(200)
             self.wfile.write(json.dumps(AdminDashboard.get_overview_metrics()).encode("utf-8"))
+            return
+
+        if path == "/api/admin/users":
+            self._send_cors(200)
+            self.wfile.write(json.dumps({"users": UserStore.list_users()}).encode("utf-8"))
+            return
+
+        if path == "/api/user/profile":
+            email = query.get("email", ["alex@pro.com"])[0]
+            user = UserStore.get_user(email) or UserStore.create_or_get_user(email)
+            self._send_cors(200)
+            self.wfile.write(json.dumps({"user": user}).encode("utf-8"))
             return
 
         if path == "/api/admin/coupons/list":
@@ -146,7 +161,15 @@ class handler(BaseHTTPRequestHandler):
                 return
 
         if path == "/api/coupons/redeem":
-            res = CouponManager.redeem_coupon(data.get("code", ""), data.get("email"))
+            email = data.get("email")
+            res = CouponManager.redeem_coupon(data.get("code", ""), email)
+            if res.get("valid") and email:
+                UserStore.associate_coupon_redemption(
+                    email=email,
+                    coupon_code=data.get("code", ""),
+                    license_key=res.get("license_key", ""),
+                    days=res.get("days", 365)
+                )
             self._send_cors(200)
             self.wfile.write(json.dumps(res).encode("utf-8"))
             return
@@ -169,6 +192,19 @@ class handler(BaseHTTPRequestHandler):
             )
             self._send_cors(200)
             self.wfile.write(json.dumps(res).encode("utf-8"))
+            return
+
+        if path == "/api/admin/user/role":
+            try:
+                email = data.get("email", "")
+                role = data.get("role", "subscriber")
+                plan = data.get("plan")
+                user = UserStore.update_role(email, role, plan)
+                self._send_cors(200)
+                self.wfile.write(json.dumps({"success": True, "user": user}).encode("utf-8"))
+            except Exception as e:
+                self._send_cors(400)
+                self.wfile.write(json.dumps({"success": False, "error": str(e)}).encode("utf-8"))
             return
 
         if path == "/api/admin/coupons/create":
