@@ -1,0 +1,46 @@
+# Environments and Secrets (CRITICAL FOR GIT SAFETY)
+.env
+.env.local
+.env.*.local
+
+# Python cache & virtual environments
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.coverage
+htmlcov/
+venv/
+.venv/
+env/
+
+# Data & Private Stores
+data/*.json
+!data/.gitkeep
+recordings/*.mp4
+scratch_screen.png
+
+# Node.js & Frontend dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+penta-app/node_modules/
+penta-app/dist/
+
+# Rust & Tauri build artifacts
+penta-app/src-tauri/target/
+target/
+
+# OS Specific
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.DS_Store
+
+# IDE & Editor files
+.vscode/
+.idea/
+*.swp
+*.swo

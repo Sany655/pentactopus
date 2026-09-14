@@ -1,0 +1,23 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "PentaAssistant",
+  "version": "1.0.0",
+  "identifier": "com.penta.assistant",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build",
+    "devUrl": "http://localhost:1420",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "Penta-Assistant",
+        "width": 1280,
+        "height": 820,
+        "resizable": true,
+        "fullscreen": false
+      }
+    ]
+  }
+}
