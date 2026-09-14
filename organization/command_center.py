@@ -4,7 +4,7 @@ import asyncio
 import sys
 import os
 
-sys.path.insert(0, r"C:\AI-Android-Agent")
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from organization.bus import EventBus
 from organization.desktop_agent import DesktopAgent

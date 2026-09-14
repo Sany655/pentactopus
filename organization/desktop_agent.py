@@ -10,9 +10,12 @@ from typing import Dict, Any, Optional
 from organization.bus import Message, EventBus
 
 class DesktopAgent:
-    def __init__(self, bus: EventBus, agent_id: str = "agent.desktop", workspace_dir: str = r"C:\AI-Android-Agent\reports"):
+    def __init__(self, bus: EventBus, agent_id: str = "agent.desktop", workspace_dir: Optional[str] = None):
         self.bus = bus
         self.agent_id = agent_id
+        if workspace_dir is None:
+            base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            workspace_dir = os.path.join(base_dir, "reports")
         self.workspace_dir = workspace_dir
         os.makedirs(self.workspace_dir, exist_ok=True)
         self.bus.register_agent(self.agent_id, self.handle_message)

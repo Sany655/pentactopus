@@ -12,7 +12,7 @@ from organization.cognitive_orchestrator import CognitiveOrchestrator
 def test_bus_direct_routing():
     async def _run():
         bus = EventBus()
-        desktop = DesktopAgent(bus, workspace_dir=r"C:\AI-Android-Agent\reports")
+        desktop = DesktopAgent(bus)
 
         resp = await bus.call("agent.desktop", "GET_SYSTEM_INFO", {}, timeout=5.0)
         assert resp.sender == "agent.desktop"
@@ -23,7 +23,7 @@ def test_bus_direct_routing():
 def test_desktop_write_and_read():
     async def _run():
         bus = EventBus()
-        desktop = DesktopAgent(bus, workspace_dir=r"C:\AI-Android-Agent\reports")
+        desktop = DesktopAgent(bus)
 
         test_content = "Test report from test_organization.py"
         write_resp = await bus.call("agent.desktop", "WRITE_REPORT", {

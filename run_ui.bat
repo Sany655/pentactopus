@@ -1,3 +1,3 @@
 @echo off
-cd /d C:\AI-Android-Agent
+cd /d "%~dp0"
 python ui.py
