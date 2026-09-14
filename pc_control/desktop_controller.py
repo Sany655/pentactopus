@@ -5,7 +5,17 @@ media controls, and application launching without heavy third-party dependencies
 """
 
 import ctypes
-from ctypes import wintypes
+try:
+    from ctypes import wintypes
+except (ImportError, ValueError, AttributeError):
+    wintypes = None
+
+if wintypes is None:
+    class _DummyWintypes:
+        DWORD = ctypes.c_uint32
+        LONG = ctypes.c_int32
+        WORD = ctypes.c_uint16
+    wintypes = _DummyWintypes()
 import io
 import time
 import subprocess
@@ -62,8 +72,12 @@ class BITMAPINFOHEADER(ctypes.Structure):
 
 class DesktopController:
     def __init__(self):
-        self.user32 = ctypes.windll.user32
-        self.gdi32 = ctypes.windll.gdi32
+        if hasattr(ctypes, "windll"):
+            self.user32 = ctypes.windll.user32
+            self.gdi32 = ctypes.windll.gdi32
+        else:
+            self.user32 = None
+            self.gdi32 = None
 
     def get_screen_resolution(self) -> Tuple[int, int]:
         w = self.user32.GetSystemMetrics(0)

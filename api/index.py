@@ -19,7 +19,7 @@ from hub.device_hub import DeviceHub
 from api.coupons import CouponManager
 from api.billing import BillingManager
 from api.admin_dashboard import AdminDashboard
-from ui import HTML_PAGE
+from api.web_template import HTML_PAGE
 
 class handler(BaseHTTPRequestHandler):
     def log_message(self, format, *args):
