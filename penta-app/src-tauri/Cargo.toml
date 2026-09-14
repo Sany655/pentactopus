@@ -1,8 +1,8 @@
 [package]
-name = "penta-assistant"
+name = "pentactopus-desktop"
 version = "1.0.0"
-description = "Penta-Assistant: Google Antigravity AI + AnyDesk Remote Control"
-authors = ["DeepMind Agentic Team"]
+description = "Pentactopus: Autonomous Computer-Use Vision AI and Remote Desktop Mesh"
+authors = ["Pentactopus Core Team"]
 edition = "2021"
 
 [build-dependencies]
