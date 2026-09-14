@@ -38,6 +38,7 @@ from api.coupons import CouponManager
 from api.billing import BillingManager, PLANS
 from api.admin_dashboard import AdminDashboard
 from api.user_store import UserStore, AuthError, LockoutError
+from local_ui_template import LOCAL_UI_HTML
 
 REPORTS_DIR = os.path.join(BASE_DIR, "reports")
 os.makedirs(REPORTS_DIR, exist_ok=True)
@@ -791,8 +792,10 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
         except Exception as e:
             self._send_json({"success": False, "error": str(e), "output": str(e)})
 
-from local_ui_template import LOCAL_UI_HTML
-import webview
+try:
+    import webview
+except ImportError:
+    webview = None
 
 def run_server():
     with ThreadedTCPServer(("", PORT), DashboardHandler) as httpd:

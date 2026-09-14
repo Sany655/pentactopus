@@ -107,10 +107,11 @@ class handler(BaseHTTPRequestHandler):
                 self.end_headers()
                 return
 
-            # 2. Check local dist, root, or static downloads directory
+            # 2. Check local dist, root, or public/static downloads directory
             local_paths = [
                 os.path.join(BASE_DIR, fname),
                 os.path.join(BASE_DIR, "dist", fname),
+                os.path.join(BASE_DIR, "public", "download", fname),
                 os.path.join(BASE_DIR, "static", "downloads", fname)
             ]
             for lp in local_paths:
@@ -129,7 +130,7 @@ class handler(BaseHTTPRequestHandler):
                     return
 
             # 3. Default redirect to official GitHub Releases for production
-            repo_release_url = f"https://github.com/Sany655/pentactopus/releases/latest/download/{fname}"
+            repo_release_url = f"https://github.com/Sany655/pentatopus/releases/latest/download/{fname}"
             self.send_response(302)
             self.send_header("Location", repo_release_url)
             self.send_header("Access-Control-Allow-Origin", "*")
@@ -295,6 +296,26 @@ class handler(BaseHTTPRequestHandler):
                 self._send_cors(200)
                 self.wfile.write(json.dumps({"success": True, "task_id": task_id}).encode("utf-8"))
                 return
+
+        if path.startswith("/api/device/") and "/task/" in path and path.endswith("/result"):
+            self._send_cors(200)
+            self.wfile.write(json.dumps({"success": True, "acknowledged": True}).encode("utf-8"))
+            return
+
+        if path in ("/api/agent/dispatch", "/api/organization/dispatch"):
+            goal = data.get("goal") or data.get("objective", "")
+            dev_id = data.get("device_id", "pc_windows_host")
+            task_id = DeviceHub.queue_action(dev_id, {
+                "type": "goal",
+                "goal": goal
+            })
+            self._send_cors(200)
+            self.wfile.write(json.dumps({
+                "success": True,
+                "task_id": task_id,
+                "message": f"Mission queued for {dev_id}: {goal}"
+            }).encode("utf-8"))
+            return
 
         # ----------------------------------------------------------------------
         # Billing & Coupons

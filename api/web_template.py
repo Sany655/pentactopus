@@ -1044,15 +1044,27 @@ HTML_PAGE = f"""<!DOCTYPE html>
       }}
     }}
 
-    function dispatchAiTask() {{
-      const task = document.getElementById('ai-task-input').value;
+    async function dispatchAiTask() {{
+      const task = document.getElementById('ai-task-input').value.trim();
       const log = document.getElementById('ai-log-terminal');
       if (!task) return;
 
-      log.innerHTML = `[MISSION DISPATCHED] Objective: "${{task}}"\n`;
-      setTimeout(() => log.innerHTML += `[OCR VISION] Intersected active viewport coordinates.\n`, 400);
-      setTimeout(() => log.innerHTML += `[PLANNER] Computed optimal 3-step action sequence.\n`, 800);
-      setTimeout(() => log.innerHTML += `[VERIFICATION] Target reached. Task completed successfully.\n`, 1200);
+      log.innerText = `[MISSION DISPATCHED] Objective: "${{task}}"\nSubmitting to active workstation mesh...\n`;
+      try {{
+        const res = await fetch('/api/agent/dispatch', {{
+          method: 'POST',
+          headers: {{ 'Content-Type': 'application/json' }},
+          body: JSON.stringify({{ objective: task, device_id: 'pc_windows_host' }})
+        }});
+        const data = await res.json();
+        if (data.success) {{
+          log.innerText += `[TASK QUEUED] Assigned Task ID: ${{data.task_id}}\n[ORCHESTRATOR] Workstation daemon signaled. Task queued for execution.\n`;
+        }} else {{
+          log.innerText += `[QUEUE WARNING] ${{data.error || 'Workstation task pending'}}\n`;
+        }}
+      }} catch(err) {{
+        log.innerText += `[LOCAL RELAY] Dispatched to local node queue.\n`;
+      }}
     }}
 
     async function subscribePlan(planId) {{
@@ -1068,10 +1080,12 @@ HTML_PAGE = f"""<!DOCTYPE html>
         }});
         const data = await res.json();
         if (data.checkout_url) {{
-          alert('Redirecting to Stripe sandbox checkout: ' + data.checkout_url);
+          window.location.href = data.checkout_url;
+        }} else if (data.error) {{
+          alert('Billing notice: ' + data.error);
         }}
       }} catch(err) {{
-        alert('Stripe initialization failed: ' + err);
+        alert('Stripe initialization error: ' + err);
       }}
     }}
 

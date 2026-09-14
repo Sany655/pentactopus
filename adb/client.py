@@ -40,12 +40,27 @@ class ADBClient:
         found = shutil.which("adb")
         if found:
             return found
-        # Check known fallback locations
-        candidates = [
-            r"C:\Users\Sany\AppData\Local\Microsoft\WinGet\Links\adb.exe",
-            r"C:\Users\Sany\AppData\Local\Microsoft\WinGet\Packages\Google.PlatformTools_Microsoft.Winget.Source_8wekyb3d8bbwe\platform-tools\adb.exe",
-            r"C:\Users\Sany\AppData\Local\Microsoft\WinGet\Packages\Genymobile.scrcpy_Microsoft.Winget.Source_8wekyb3d8bbwe\scrcpy-win64-v4.1\adb.exe"
-        ]
+        # Check known fallback locations dynamically
+        candidates = []
+        local_app_data = os.getenv("LOCALAPPDATA")
+        if local_app_data:
+            candidates.extend([
+                os.path.join(local_app_data, "Microsoft", "WinGet", "Links", "adb.exe"),
+                os.path.join(local_app_data, "Android", "Sdk", "platform-tools", "adb.exe"),
+            ])
+            # Check WinGet package directories
+            winget_pkgs = os.path.join(local_app_data, "Microsoft", "WinGet", "Packages")
+            if os.path.isdir(winget_pkgs):
+                for root, _, files in os.walk(winget_pkgs):
+                    if "adb.exe" in files:
+                        candidates.append(os.path.join(root, "adb.exe"))
+                        break
+
+        android_home = os.getenv("ANDROID_HOME") or os.getenv("ANDROID_SDK_ROOT")
+        if android_home:
+            candidates.append(os.path.join(android_home, "platform-tools", "adb.exe"))
+            candidates.append(os.path.join(android_home, "adb.exe"))
+
         for c in candidates:
             if os.path.isfile(c):
                 return c

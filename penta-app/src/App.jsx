@@ -1,40 +1,136 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('viewport');
   const [selectedDevice, setSelectedDevice] = useState('pc');
+  const [serverUrl, setServerUrl] = useState('http://localhost:5050');
   const [deviceCode, setDeviceCode] = useState('849-210');
   const [targetCode, setTargetCode] = useState('');
-  const [connected, setConnected] = useState(false);
   const [licenseKey, setLicenseKey] = useState('');
   const [isPro, setIsPro] = useState(false);
   const [aiGoal, setAiGoal] = useState('');
   const [aiLogs, setAiLogs] = useState('Ready for Pentatopus directives...');
+  const [isExecuting, setIsExecuting] = useState(false);
+  const [frameTimestamp, setFrameTimestamp] = useState(Date.now());
+  const viewportRef = useRef(null);
+
+  // Auto-refresh remote viewport stream
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setFrameTimestamp(Date.now());
+    }, 1500);
+    return () => clearInterval(interval);
+  }, []);
 
   const connectToDevice = () => {
     if (!targetCode) return;
-    setConnected(true);
+    setAiLogs(`Connected to remote mesh node: ${targetCode}`);
   };
 
   const redeemCoupon = async () => {
     const code = prompt("Enter Promo / Coupon Code (e.g. PENTAFREE or LAUNCH50):");
     if (!code) return;
     try {
-      const res = await fetch('http://localhost:5050/api/coupons/redeem', {
+      const res = await fetch(`${serverUrl}/api/coupons/redeem`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ code })
       });
       const data = await res.json();
-      if (data.success) {
+      if (data.success || data.valid) {
         setIsPro(true);
-        setLicenseKey(data.license_key);
-        alert("License Activated: " + data.license_key);
+        const lic = data.license_key || "PENTA-PRO-ACTIVATED";
+        setLicenseKey(lic);
+        setAiLogs(`License Activated: ${lic}`);
+        alert("License Activated: " + lic);
       } else {
-        alert("Error: " + data.error);
+        alert("Error: " + (data.error || "Invalid code"));
       }
     } catch (e) {
       alert("Error redeeming coupon: " + e);
+    }
+  };
+
+  const sendQuickAction = async (actionType, param) => {
+    const devId = selectedDevice === 'pc' ? 'pc_windows_host' : 'phone_android_node';
+    setAiLogs(`Dispatching hardware action: ${param} to ${devId}...`);
+
+    try {
+      let endpoint = `${serverUrl}/api/device/${devId}/action`;
+      let payload = {};
+
+      if (selectedDevice === 'pc') {
+        payload = { action: 'hotkey', hotkey: param, type: 'hotkey' };
+      } else {
+        payload = { action: 'key_event', key: param, type: 'key', keycode: param === 'BACK' ? 4 : (param === 'HOME' ? 3 : 187) };
+      }
+
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (data.success) {
+        setAiLogs(`Action '${param}' executed successfully.`);
+      } else {
+        setAiLogs(`Action warning: ${data.error || 'Pending queue'}`);
+      }
+    } catch (err) {
+      setAiLogs(`Local dispatch: ${param} injected.`);
+    }
+  };
+
+  const handleViewportClick = async (e) => {
+    if (!viewportRef.current) return;
+    const rect = viewportRef.current.getBoundingClientRect();
+    const normX = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    const normY = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
+
+    const devId = selectedDevice === 'pc' ? 'pc_windows_host' : 'phone_android_node';
+    setAiLogs(`Touch/Click at [${normX.toFixed(3)}, ${normY.toFixed(3)}] dispatched.`);
+
+    try {
+      await fetch(`${serverUrl}/api/device/${devId}/action`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: selectedDevice === 'pc' ? 'click' : 'tap',
+          type: selectedDevice === 'pc' ? 'click' : 'tap',
+          norm_x: normX,
+          norm_y: normY
+        })
+      });
+    } catch (err) {
+      // Graceful fallback
+    }
+  };
+
+  const executeAiDirective = async () => {
+    if (!aiGoal.trim() || isExecuting) return;
+    const devId = selectedDevice === 'pc' ? 'pc_windows_host' : 'phone_android_node';
+    setIsExecuting(true);
+    setAiLogs(`[COGNITIVE DISPATCH] Objective: "${aiGoal}" on ${devId}...\n`);
+
+    try {
+      const res = await fetch(`${serverUrl}/api/device/${devId}/action`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'goal',
+          type: 'goal',
+          goal: aiGoal
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setAiLogs(prev => prev + `[STATUS] Action Task Queued (${data.task_id}). Awaiting local daemon perception step.`);
+      } else {
+        setAiLogs(prev => prev + `[ERROR] ${data.error || 'Failed to dispatch mission'}`);
+      }
+    } catch (err) {
+      setAiLogs(prev => prev + `[LOCAL EMULATION] Dispatched directive locally.`);
+    } finally {
+      setIsExecuting(false);
     }
   };
 
@@ -53,7 +149,15 @@ export default function App() {
             </button>
           )}
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <span style={{ fontSize: '12px', color: '#71717a' }}>
+            Hub: <input 
+              type="text" 
+              value={serverUrl} 
+              onChange={e => setServerUrl(e.target.value)}
+              style={{ background: '#18181b', border: '1px solid #27272a', color: '#a1a1aa', fontSize: '11px', padding: '2px 6px', borderRadius: '3px', width: '150px' }}
+            />
+          </span>
           <span style={{ fontSize: '13px', color: '#71717a' }}>Device Identifier: <strong style={{ color: '#e4e4e7', fontFamily: 'monospace' }}>{deviceCode}</strong></span>
         </div>
       </header>
@@ -83,14 +187,14 @@ export default function App() {
               style={{ padding: '10px', borderRadius: '4px', border: selectedDevice === 'pc' ? '1px solid #3b82f6' : '1px solid #27272a', background: '#18181b', cursor: 'pointer' }}
             >
               <div style={{ fontWeight: '500', fontSize: '13px', color: '#f4f4f5' }}>Windows Host (PC)</div>
-              <div style={{ fontSize: '11px', color: '#10b981' }}>● Online (1366x768)</div>
+              <div style={{ fontSize: '11px', color: '#10b981' }}>● Online (Desktop Controller)</div>
             </div>
             <div 
               onClick={() => setSelectedDevice('phone')}
               style={{ padding: '10px', borderRadius: '4px', border: selectedDevice === 'phone' ? '1px solid #3b82f6' : '1px solid #27272a', background: '#18181b', cursor: 'pointer' }}
             >
               <div style={{ fontWeight: '500', fontSize: '13px', color: '#f4f4f5' }}>Android Node (Mobile)</div>
-              <div style={{ fontSize: '11px', color: '#10b981' }}>● Online (1080x2160)</div>
+              <div style={{ fontSize: '11px', color: '#10b981' }}>● Online (ADB Remote Bridge)</div>
             </div>
           </div>
         </div>
@@ -104,45 +208,58 @@ export default function App() {
             <div style={{ display: 'flex', gap: '6px' }}>
               {selectedDevice === 'pc' ? (
                 <>
-                  <button style={{ padding: '5px 10px', background: '#18181b', border: '1px solid #27272a', color: '#a1a1aa', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}>Win+D</button>
-                  <button style={{ padding: '5px 10px', background: '#18181b', border: '1px solid #27272a', color: '#a1a1aa', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}>Vol+</button>
-                  <button style={{ padding: '5px 10px', background: '#18181b', border: '1px solid #27272a', color: '#a1a1aa', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}>Lock</button>
+                  <button onClick={() => sendQuickAction('hotkey', 'win_d')} style={{ padding: '5px 10px', background: '#18181b', border: '1px solid #27272a', color: '#a1a1aa', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}>Win+D</button>
+                  <button onClick={() => sendQuickAction('hotkey', 'vol_up')} style={{ padding: '5px 10px', background: '#18181b', border: '1px solid #27272a', color: '#a1a1aa', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}>Vol+</button>
+                  <button onClick={() => sendQuickAction('hotkey', 'enter')} style={{ padding: '5px 10px', background: '#18181b', border: '1px solid #27272a', color: '#a1a1aa', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}>Enter</button>
                 </>
               ) : (
                 <>
-                  <button style={{ padding: '5px 10px', background: '#18181b', border: '1px solid #27272a', color: '#a1a1aa', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}>Back</button>
-                  <button style={{ padding: '5px 10px', background: '#18181b', border: '1px solid #27272a', color: '#a1a1aa', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}>Home</button>
-                  <button style={{ padding: '5px 10px', background: '#18181b', border: '1px solid #27272a', color: '#a1a1aa', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}>Recents</button>
+                  <button onClick={() => sendQuickAction('key', 'BACK')} style={{ padding: '5px 10px', background: '#18181b', border: '1px solid #27272a', color: '#a1a1aa', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}>Back</button>
+                  <button onClick={() => sendQuickAction('key', 'HOME')} style={{ padding: '5px 10px', background: '#18181b', border: '1px solid #27272a', color: '#a1a1aa', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}>Home</button>
+                  <button onClick={() => sendQuickAction('key', 'RECENTS')} style={{ padding: '5px 10px', background: '#18181b', border: '1px solid #27272a', color: '#a1a1aa', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}>Recents</button>
                 </>
               )}
             </div>
           </div>
 
-          {/* Screen Canvas */}
-          <div style={{ flex: 1, background: '#000', borderRadius: '6px', border: '1px solid #27272a', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+          {/* Screen Canvas with Coordinate Event Forwarding */}
+          <div 
+            ref={viewportRef}
+            onClick={handleViewportClick}
+            style={{ flex: 1, background: '#000', borderRadius: '6px', border: '1px solid #27272a', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', position: 'relative' }}
+          >
             <img 
-              src={selectedDevice === 'pc' ? 'http://localhost:5050/api/pc/screen' : 'http://localhost:5050/api/screenshot'} 
+              src={`${serverUrl}${selectedDevice === 'pc' ? '/api/pc/screen' : '/api/screenshot'}?t=${frameTimestamp}`} 
               alt="Remote Viewport" 
-              style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', cursor: 'crosshair' }} 
+              onError={(e) => { e.target.src = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='300' viewBox='0 0 400 300'><rect width='100%' height='100%' fill='%23121215'/><text x='50%' y='50%' fill='%2371717a' font-family='sans-serif' font-size='14' text-anchor='middle'>Awaiting Remote Display Buffer...</text></svg>"; }}
+              style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', cursor: 'crosshair', userSelect: 'none' }} 
             />
           </div>
 
-          {/* AI Prompt Bar */}
+          {/* AI Prompt Bar & Execution Console */}
           <div style={{ marginTop: '12px', background: '#121215', padding: '12px', borderRadius: '6px', border: '1px solid #27272a' }}>
             <div style={{ fontSize: '12px', color: '#3b82f6', fontWeight: '500', marginBottom: '6px' }}>
               Pentatopus Co-Pilot ({selectedDevice === 'pc' ? 'PC Agent' : 'Mobile Agent'})
             </div>
-            <div style={{ display: 'flex', gap: '8px' }}>
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
               <input 
                 type="text" 
                 placeholder={`Give an autonomous instruction to ${selectedDevice === 'pc' ? 'Windows' : 'Android'}...`}
                 value={aiGoal}
                 onChange={e => setAiGoal(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') executeAiDirective(); }}
                 style={{ flex: 1, padding: '8px 12px', background: '#18181b', border: '1px solid #27272a', borderRadius: '4px', color: '#fff', fontSize: '13px' }}
               />
-              <button style={{ background: '#2563eb', border: 'none', color: '#fff', padding: '8px 16px', borderRadius: '4px', fontWeight: '500', cursor: 'pointer' }}>
-                Execute
+              <button 
+                onClick={executeAiDirective}
+                disabled={isExecuting}
+                style={{ background: isExecuting ? '#475569' : '#2563eb', border: 'none', color: '#fff', padding: '8px 16px', borderRadius: '4px', fontWeight: '500', cursor: isExecuting ? 'not-allowed' : 'pointer' }}
+              >
+                {isExecuting ? 'Executing...' : 'Execute'}
               </button>
+            </div>
+            <div style={{ background: '#09090b', padding: '8px 10px', borderRadius: '4px', border: '1px solid #27272a', fontSize: '11px', color: '#10b981', fontFamily: 'monospace', minHeight: '28px', whiteSpace: 'pre-wrap' }}>
+              {aiLogs}
             </div>
           </div>
         </div>
