@@ -19,8 +19,8 @@ PENTACTOPUS_LOGO_SVG = """<svg width="28" height="28" viewBox="0 0 32 32" fill="
 </svg>"""
 import os
 
-EXE_URL = os.getenv("RELEASE_DOWNLOAD_EXE_URL", "https://github.com/Sany655/pentactopus/releases/latest/download/PentaAssistant-Setup.exe")
-APK_URL = os.getenv("RELEASE_DOWNLOAD_APK_URL", "https://github.com/Sany655/pentactopus/releases/latest/download/PentaAssistant.apk")
+EXE_URL = os.getenv("RELEASE_DOWNLOAD_EXE_URL", "https://github.com/Sany655/pentactopus-releases/raw/main/PentaAssistant-Setup.exe")
+APK_URL = os.getenv("RELEASE_DOWNLOAD_APK_URL", "https://github.com/Sany655/pentactopus-releases/raw/main/PentaAssistant.apk")
 
 HTML_PAGE = f"""<!DOCTYPE html>
 <html lang="en">
