@@ -187,3 +187,30 @@ jobs:
             ./release-assets/PentaAssistant.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push binaries to public releases repo
+        env:
+          RELEASE_REPO_PAT: ${{ secrets.RELEASE_REPO_PAT }}
+        run: |
+          # Only run if the token is provided
+          if [ -z "$RELEASE_REPO_PAT" ]; then
+            echo "RELEASE_REPO_PAT secret is not set. Skipping push to public repository."
+            exit 0
+          fi
+          
+          # Setup git credentials
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # Clone the public releases repository
+          git clone https://x-access-token:${RELEASE_REPO_PAT}@github.com/Sany655/pentactopus-releases.git public-repo
+          
+          # Copy the compiled binaries into the repository
+          cp ./release-assets/PentaAssistant-Setup.exe public-repo/
+          cp ./release-assets/PentaAssistant.apk public-repo/
+          
+          # Commit and push
+          cd public-repo
+          git add PentaAssistant-Setup.exe PentaAssistant.apk
+          git commit -m "chore: automated binary release for ${{ github.ref_name }}" || echo "No changes to commit"
+          git push origin main
