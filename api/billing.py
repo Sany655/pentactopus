@@ -9,7 +9,7 @@ import json
 import time
 import uuid
 from typing import Dict, Any, Optional
-
+ 
 try:
     import stripe
     stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "sk_test_mock_key")
