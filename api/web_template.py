@@ -1129,7 +1129,7 @@ HTML_PAGE = f"""<!DOCTYPE html>
         <iframe id="demo-iframe"
           src="https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=1&rel=0&modestbranding=1&color=white"
           style="position:absolute;top:0;left:0;width:100%;height:100%;border:none;"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
           allowfullscreen
           title="Pentactopus Demo — Autonomous AI Computer Control">
         </iframe>
