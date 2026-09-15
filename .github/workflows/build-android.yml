@@ -1,8 +1,8 @@
-name: Build Android APK
+name: Build Android APK (Standalone)
 
+# This workflow is a standalone Android build — the main release pipeline
+# is in build-clients.yml which also creates the GitHub Release.
 on:
-  push:
-    branches: [ main ]
   workflow_dispatch:
 
 jobs:
@@ -21,7 +21,7 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: aarch64-linux-android, armv7-linux-androideabi, i686-linux-android, x86_64-linux-android
+          targets: aarch64-linux-android,armv7-linux-androideabi,i686-linux-android,x86_64-linux-android
 
       - name: Setup Java
         uses: actions/setup-java@v4
@@ -34,8 +34,8 @@ jobs:
 
       - name: Setup Android NDK
         run: |
-          echo "y" | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install "ndk;25.1.8937393"
-          echo "NDK_HOME=$ANDROID_HOME/ndk/25.1.8937393" >> $GITHUB_ENV
+          echo "y" | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install "ndk;25.2.9519653"
+          echo "ANDROID_NDK_ROOT=$ANDROID_HOME/ndk/25.2.9519653" >> $GITHUB_ENV
 
       - name: Install dependencies
         working-directory: ./penta-app
@@ -45,15 +45,26 @@ jobs:
         working-directory: ./penta-app
         run: |
           if [ ! -d "src-tauri/gen/android" ]; then
-            npx tauri android init --ci || echo "Init failed but continuing"
+            cargo tauri android init --ci || echo "Init failed but continuing"
           fi
+        env:
+          ANDROID_NDK_ROOT: ${{ env.ANDROID_NDK_ROOT }}
 
       - name: Build Android APK
         working-directory: ./penta-app
-        run: npx tauri android build
+        run: cargo tauri android build --apk
+        env:
+          ANDROID_NDK_ROOT: ${{ env.ANDROID_NDK_ROOT }}
+
+      - name: Rename and Upload APK Artifact
+        run: |
+          APK=$(find penta-app/src-tauri/gen/android -name "*.apk" | head -1)
+          if [ -n "$APK" ]; then
+            cp "$APK" PentaAssistant.apk
+          fi
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: PentaAssistant-Android
-          path: penta-app/src-tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-release.apk
+          path: PentaAssistant.apk

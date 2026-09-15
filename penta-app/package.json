@@ -1,7 +1,7 @@
 {
   "name": "penta-assistant-app",
   "private": true,
-  "version": "1.0.0",
+  "version": "2.5.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -11,7 +11,8 @@
   },
   "dependencies": {
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "@tauri-apps/api": "^2.0.0"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.0.0",

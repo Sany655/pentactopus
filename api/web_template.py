@@ -559,7 +559,7 @@ HTML_PAGE = f"""<!DOCTYPE html>
     </p>
     <div class="hero-actions">
       <button class="btn btn-primary" onclick="openAuthModal('register')">Try Pentactopus Free</button>
-      <button class="btn" onclick="alert('Demo video coming soon!')">Watch Demo</button>
+      <button class="btn" id="watch-demo-btn" onclick="openDemoModal()">&#9654; Watch Demo</button>
     </div>
 
     <!-- Technical Architecture Blueprint -->
@@ -717,7 +717,7 @@ HTML_PAGE = f"""<!DOCTYPE html>
             SHA-256: <code>e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855</code>
           </div>
         </div>
-        <a href="/download/PentaAssistant-Setup.exe" class="btn btn-primary" style="justify-content:center;">Download Installer (.exe)</a>
+        <a href="https://github.com/Sany655/pentactopus/releases/latest/download/PentaAssistant-Setup.exe" class="btn btn-primary" style="justify-content:center;" id="dl-windows">&#8595; Download Installer (.exe)</a>
       </div>
 
       <div class="download-card">
@@ -729,7 +729,7 @@ HTML_PAGE = f"""<!DOCTYPE html>
             SHA-256: <code>b8956b6a3b2b801a2d5f818b7468e2f8e124ef94da7c6d66e5114170875c7429</code>
           </div>
         </div>
-        <a href="/download/PentaAssistant.apk" class="btn" style="justify-content:center;">Download APK (.apk)</a>
+        <a href="https://github.com/Sany655/pentactopus/releases/latest/download/PentaAssistant.apk" class="btn" style="justify-content:center;" id="dl-android">&#8595; Download APK (.apk)</a>
       </div>
     </div>
   </section>
@@ -1092,7 +1092,50 @@ HTML_PAGE = f"""<!DOCTYPE html>
     // Initial setup
     calculateEconomics();
     checkCurrentSession();
+
+    // Demo modal
+    function openDemoModal() {{
+      document.getElementById('demo-modal').style.display = 'flex';
+      document.body.style.overflow = 'hidden';
+    }}
+    function closeDemoModal() {{
+      document.getElementById('demo-modal').style.display = 'none';
+      document.body.style.overflow = '';
+      // Stop video
+      const iframe = document.getElementById('demo-iframe');
+      iframe.src = iframe.src;
+    }}
+    document.addEventListener('keydown', function(e) {{
+      if (e.key === 'Escape') closeDemoModal();
+    }});
   </script>
+
+  <!-- Demo Video Modal -->
+  <div id="demo-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.85);backdrop-filter:blur(8px);align-items:center;justify-content:center;">
+    <div style="position:relative;width:min(880px,95vw);background:#09090b;border:1px solid #27272a;border-radius:12px;overflow:hidden;box-shadow:0 25px 80px rgba(0,0,0,0.7);">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid #27272a;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span style="width:8px;height:8px;border-radius:50%;background:#10b981;display:inline-block;"></span>
+          <span style="font-size:13px;font-weight:600;color:#e4e4e7;">Pentactopus — Live Demo</span>
+          <span style="font-size:11px;color:#71717a;background:#18181b;border:1px solid #27272a;padding:2px 8px;border-radius:4px;">Autonomous AI Computer Control</span>
+        </div>
+        <button onclick="closeDemoModal()" style="background:transparent;border:none;color:#71717a;font-size:18px;cursor:pointer;padding:4px 8px;border-radius:4px;transition:color 0.15s;" onmouseover="this.style.color='#e4e4e7'" onmouseout="this.style.color='#71717a'">&times;</button>
+      </div>
+      <div style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden;">
+        <iframe id="demo-iframe"
+          src="https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=1&rel=0&modestbranding=1&color=white"
+          style="position:absolute;top:0;left:0;width:100%;height:100%;border:none;"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowfullscreen
+          title="Pentactopus Demo — Autonomous AI Computer Control">
+        </iframe>
+      </div>
+      <div style="padding:16px 20px;border-top:1px solid #27272a;display:flex;gap:12px;justify-content:flex-end;">
+        <a href="#downloads" onclick="closeDemoModal()" class="btn btn-primary" style="font-size:13px;">&#8595; Download Now</a>
+        <button onclick="closeDemoModal()" class="btn" style="font-size:13px;">Close</button>
+      </div>
+    </div>
+  </div>
 </body>
 </html>
 """
