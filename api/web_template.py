@@ -717,7 +717,7 @@ HTML_PAGE = f"""<!DOCTYPE html>
             SHA-256: <code>e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855</code>
           </div>
         </div>
-        <a href="https://github.com/Sany655/pentactopus/releases/latest/download/PentaAssistant-Setup.exe" class="btn btn-primary" style="justify-content:center;" id="dl-windows">&#8595; Download Installer (.exe)</a>
+        <a href="https://github.com/Sany655/pentactopus-releases/PentaAssistant-Setup.exe" class="btn btn-primary" style="justify-content:center;" id="dl-windows">&#8595; Download Installer (.exe)</a>
       </div>
 
       <div class="download-card">
@@ -729,7 +729,7 @@ HTML_PAGE = f"""<!DOCTYPE html>
             SHA-256: <code>b8956b6a3b2b801a2d5f818b7468e2f8e124ef94da7c6d66e5114170875c7429</code>
           </div>
         </div>
-        <a href="https://github.com/Sany655/pentactopus/releases/latest/download/PentaAssistant.apk" class="btn" style="justify-content:center;" id="dl-android">&#8595; Download APK (.apk)</a>
+        <a href="https://github.com/Sany655/pentactopus-releases/PentaAssistant.apk" class="btn" style="justify-content:center;" id="dl-android">&#8595; Download APK (.apk)</a>
       </div>
     </div>
   </section>

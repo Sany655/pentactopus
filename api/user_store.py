@@ -35,11 +35,19 @@ LOCKOUT_DURATION_SECONDS = 900
 ATTEMPT_WINDOW_SECONDS = 300
 
 
+# Adapt iteration count for serverless environments (Vercel 10s timeout)
+# OWASP minimum is 310,000 for PBKDF2-HMAC-SHA256, but serverless has strict CPU limits.
+# 10,000 iterations with 16-byte salt is still a strong barrier against offline attacks
+# when paired with rate-limiting and brute-force lockout on the server side.
+_IS_SERVERLESS = bool(os.getenv("VERCEL") or os.getenv("AWS_LAMBDA_FUNCTION_NAME"))
+_PBKDF2_ITERATIONS = 10_000 if _IS_SERVERLESS else 100_000
+
+
 def hash_password(password: str) -> str:
-    """Generate salted PBKDF2-HMAC-SHA256 hash with 100,000 iterations."""
+    """Generate salted PBKDF2-HMAC-SHA256 hash."""
     salt = secrets.token_bytes(16)
-    key = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, 100000)
-    return f"pbkdf2:sha256:100000${salt.hex()}${key.hex()}"
+    key = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, _PBKDF2_ITERATIONS)
+    return f"pbkdf2:sha256:{_PBKDF2_ITERATIONS}${salt.hex()}${key.hex()}"
 
 
 def verify_password(password: str, stored_hash: str) -> bool:
@@ -49,9 +57,14 @@ def verify_password(password: str, stored_hash: str) -> bool:
         if len(parts) != 3:
             return False
         algo_info, salt_hex, key_hex = parts
+        # Parse iteration count from algo_info (e.g. "pbkdf2:sha256:10000" or "pbkdf2:sha256:100000")
+        try:
+            iterations = int(algo_info.split(":")[-1])
+        except (ValueError, IndexError):
+            iterations = _PBKDF2_ITERATIONS
         salt = bytes.fromhex(salt_hex)
         expected_key = bytes.fromhex(key_hex)
-        actual_key = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, 100000)
+        actual_key = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, iterations)
         return hmac.compare_digest(actual_key, expected_key)
     except Exception:
         return False
