@@ -724,8 +724,8 @@ HTML_PAGE = f"""<!DOCTYPE html>
         <div>
           <h4>Pentactopus for Android</h4>
           <div class="download-meta">
-            Version: 2.5.0 • Size: 14.2 MB • Architecture: arm64-v8a<br>
-            OS: Android 11.0 through Android 15+<br>
+            Version: 2.5.0 • Size: 14.2 MB • Architecture: Universal (arm64, armv7, x86_64)<br>
+            OS: Android 8.0 (Oreo) &amp; 9.0 (Pie) through Android 15+ (API 26–35)<br>
             SHA-256: <code>b8956b6a3b2b801a2d5f818b7468e2f8e124ef94da7c6d66e5114170875c7429</code>
           </div>
         </div>

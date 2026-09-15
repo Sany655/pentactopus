@@ -176,11 +176,30 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
 
         elif path.startswith("/download/"):
             fname = os.path.basename(path)
-            self.send_response(200)
-            self.send_header("Content-Disposition", f'attachment; filename="{fname}"')
-            self.send_header("Content-Type", "application/octet-stream")
-            self.end_headers()
-            self.wfile.write(f"Mock binary installer data for {fname}".encode("utf-8"))
+            local_paths = [
+                os.path.join(BASE_DIR, fname),
+                os.path.join(BASE_DIR, "dist", fname),
+                os.path.join(BASE_DIR, "public", "download", fname),
+                os.path.join(BASE_DIR, "static", "downloads", fname)
+            ]
+            served = False
+            for lp in local_paths:
+                if os.path.isfile(lp):
+                    content_type = "application/vnd.microsoft.portable-executable" if fname.endswith(".exe") else "application/vnd.android.package-archive"
+                    file_size = os.path.getsize(lp)
+                    self.send_response(200)
+                    self.send_header("Content-Disposition", f'attachment; filename="{fname}"')
+                    self.send_header("Content-Type", content_type)
+                    self.send_header("Content-Length", str(file_size))
+                    self.send_header("Access-Control-Allow-Origin", "*")
+                    self.end_headers()
+                    with open(lp, "rb") as bf:
+                        while chunk := bf.read(65536):
+                            self.wfile.write(chunk)
+                    served = True
+                    break
+            if not served:
+                self.send_error(404, f"Binary {fname} not found")
 
         else:
             self.send_error(404, "Not found")
@@ -522,16 +541,23 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
 
     def handle_pc_agent(self, data):
         goal = data.get("goal", "Show PC desktop")
-        provider = data.get("provider", "gemini")
-        model_name = data.get("model")
+        provider = data.get("provider") or os.environ.get("MODEL_PROVIDER", "gemini")
+        model_name = data.get("model") or os.environ.get("MODEL_NAME", "gemini-2.5-flash")
         dry_run = data.get("dry_run", False)
         try:
             m = get_model_provider(provider, model_name=model_name)
             agent = PCAgent(model_provider=m, dry_run=dry_run)
             res = agent.run_goal(goal)
+            steps_log = []
+            for s in res.get("steps", []):
+                act = s.get("action", {})
+                act_name = act.get("action", "unknown")
+                steps_log.append(f"[Step {s.get('step')}] Decision: {act_name} -> {json.dumps(act)}")
+            final_msg = res.get("message", "Task finished.")
+            res["output"] = "\n".join(steps_log) + f"\n\n[COMPLETION] {final_msg}"
             self._send_json(res)
         except Exception as e:
-            self._send_json({"success": False, "error": str(e)})
+            self._send_json({"success": False, "error": str(e), "output": str(e)})
 
     def handle_mobile_click(self, data):
         active_serial = self.get_target_serial()
@@ -761,25 +787,53 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
             self._send_json({"success": False, "error": str(e)})
 
     def handle_run_agent(self, data):
-        goal = data.get("goal", "Open Android Settings")
-        provider = data.get("provider", "mock")
+        goal = data.get("goal") or data.get("prompt", "Show PC desktop")
+        provider = data.get("provider") or os.environ.get("MODEL_PROVIDER", "gemini")
+        model_name = data.get("model") or os.environ.get("MODEL_NAME", "gemini-2.5-flash")
         dry_run = data.get("dry_run", False)
+        target = data.get("target") or data.get("device", "auto")
         active_serial = self.get_target_serial()
 
-        cmd = [sys.executable, "-u", os.path.join(BASE_DIR, "main.py"), "--goal", goal, "--provider", provider]
-        if dry_run:
-            cmd.append("--dry-run")
-        if active_serial:
-            cmd.extend(["--serial", active_serial])
-
         try:
-            res = subprocess.run(cmd, capture_output=True, text=True, timeout=40)
-            self._send_json({
-                "success": res.returncode == 0,
-                "output": res.stdout + "\n" + res.stderr
-            })
+            m = get_model_provider(provider, model_name=model_name)
+            
+            # Determine platform: PC Desktop vs Android Phone
+            is_android_target = (target == "phone") or (target == "auto" and bool(active_serial))
+
+            if is_android_target and active_serial:
+                from agent.core import AndroidAgent
+                adb = ADBClient(device_serial=active_serial)
+                agent = AndroidAgent(model_provider=m, adb_client=adb, dry_run=dry_run)
+                res = agent.run_goal(goal)
+                self._send_json({
+                    "success": res.get("success", False),
+                    "platform": "android",
+                    "device": active_serial,
+                    "output": res.get("message", json.dumps(res)),
+                    "steps": res.get("steps", [])
+                })
+            else:
+                # Windows Desktop Autonomous PC Agent
+                agent = PCAgent(model_provider=m, dry_run=dry_run)
+                res = agent.run_goal(goal)
+                steps_log = []
+                for s in res.get("steps", []):
+                    act = s.get("action", {})
+                    act_name = act.get("action", "unknown")
+                    steps_log.append(f"[Step {s.get('step')}] Decision: {act_name} -> {json.dumps(act)}")
+                
+                final_msg = res.get("message", "Task finished.")
+                full_output = "\n".join(steps_log) + f"\n\n[COMPLETION] {final_msg}"
+                self._send_json({
+                    "success": res.get("success", False),
+                    "platform": "windows",
+                    "device": "pc_windows_host",
+                    "output": full_output,
+                    "steps": res.get("steps", []),
+                    "raw": res
+                })
         except Exception as e:
-            self._send_json({"success": False, "error": str(e), "output": str(e)})
+            self._send_json({"success": False, "error": str(e), "output": f"Agent error: {str(e)}"})
 
     def handle_run_organization(self, data):
         cmd = [sys.executable, "-u", os.path.join(BASE_DIR, "organization", "command_center.py")]
@@ -809,9 +863,28 @@ def main():
     print(f"  PENTACTOPUS NATIVE COMMAND HUB RUNNING")
     print("="*65)
     
+    # 1. Start HTTP Dashboard Server
     server_thread = threading.Thread(target=run_server, daemon=True)
     server_thread.start()
+
+    # 2. Start Background Device Daemon & Remote Control Bridge
+    try:
+        from penta.penta_daemon import PentaDaemon
+        cloud_url = os.environ.get("PENTA_CLOUD_URL", "http://localhost:5051")
+        penta_daemon = PentaDaemon(cloud_url=cloud_url)
+        penta_daemon.start()
+        print(f"  [DAEMON] PentaDaemon active & paired with {cloud_url}")
+    except Exception as e:
+        print(f"  [DAEMON WARN] Background daemon start error: {e}")
     
+    if os.environ.get("PENTA_HEADLESS_TEST") == "1" or not webview:
+        try:
+            while True:
+                time.sleep(1)
+        except (KeyboardInterrupt, SystemExit):
+            pass
+        return
+
     webview.create_window("Pentactopus Assistant", f"http://localhost:{PORT}", width=1200, height=800)
     webview.start()
 

@@ -79,6 +79,10 @@ class DesktopController:
             self.user32 = None
             self.gdi32 = None
 
+    @property
+    def screen_size(self) -> Tuple[int, int]:
+        return self.get_screen_resolution()
+
     def get_screen_resolution(self) -> Tuple[int, int]:
         w = self.user32.GetSystemMetrics(0)
         h = self.user32.GetSystemMetrics(1)
@@ -121,12 +125,13 @@ class DesktopController:
         img = Image.frombuffer('RGBA', (w, h), buf, 'raw', 'BGRA', 0, 1)
         return img.convert('RGB')
 
-    def capture_screen_jpeg(self, quality: int = 75, max_width: Optional[int] = 1024) -> bytes:
+    def capture_screen_jpeg(self, quality: int = 75, max_width: Optional[int] = 1024, target_width: Optional[int] = None) -> bytes:
+        effective_max = target_width if target_width is not None else max_width
         img = self.capture_screen_image()
-        if max_width and img.width > max_width:
-            ratio = max_width / float(img.width)
+        if effective_max and img.width > effective_max:
+            ratio = effective_max / float(img.width)
             new_h = int(img.height * ratio)
-            img = img.resize((max_width, new_h), Image.Resampling.LANCZOS)
+            img = img.resize((effective_max, new_h), Image.Resampling.LANCZOS)
 
         out = io.BytesIO()
         img.save(out, format="JPEG", quality=quality)

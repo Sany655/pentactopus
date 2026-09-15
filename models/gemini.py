@@ -27,6 +27,28 @@ Allowed actions:
 Do NOT output markdown or explanations. Output ONLY JSON.
 """
 
+PC_SYSTEM_PROMPT = """You are an autonomous Windows PC Desktop Computer-Use Agent.
+Your job is to accomplish the user's goal on the Windows PC by issuing structured actions.
+You are provided with:
+1. The user's goal
+2. Current screen resolution
+3. Optionally a screenshot of the current Windows Desktop.
+
+You MUST respond ONLY with a valid JSON object describing the single next action to take.
+Allowed actions:
+- {"action": "click", "x": 683, "y": 384}
+- {"action": "double_click", "x": 100, "y": 200}
+- {"action": "right_click", "x": 500, "y": 400}
+- {"action": "type", "text": "notepad"}
+- {"action": "hotkey", "key": "ENTER" | "ESC" | "WIN_D" | "TAB" | "SPACE" | "VOL_UP" | "VOL_DOWN" | "MUTE" | "PLAY_PAUSE"}
+- {"action": "launch_app", "app": "chrome" | "notepad" | "calc" | "explorer" | "terminal"}
+- {"action": "open_url", "url": "https://example.com"}
+- {"action": "wait", "seconds": 2}
+- {"action": "finish", "status": "success", "message": "Goal accomplished on PC"}
+
+Do NOT output markdown or explanations. Output ONLY JSON.
+"""
+
 class GeminiProvider(BaseModelProvider):
     def __init__(self, model_name: str = "gemini-2.5-flash", api_key: Optional[str] = None):
         key = api_key or os.environ.get("GEMINI_API_KEY") or os.environ.get("API_KEY")
@@ -42,6 +64,10 @@ class GeminiProvider(BaseModelProvider):
         if not self.api_key:
             raise ValueError("GEMINI_API_KEY is not set.")
 
+        # Dynamically determine platform prompt: PC Desktop vs Android Mobile
+        is_pc = any(k in goal.lower() or k in screen_state_text.lower() for k in ["[pc", "windows", "desktop", "pc agent"])
+        sys_prompt = PC_SYSTEM_PROMPT if is_pc else SYSTEM_PROMPT
+
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.model_name}:generateContent?key={self.api_key}"
         prompt = f"Goal: {goal}\n\nCurrent UI State:\n{screen_state_text}\n\nWhat is the single next JSON action?"
 
@@ -50,13 +76,13 @@ class GeminiProvider(BaseModelProvider):
             b64_img = base64.b64encode(screenshot_bytes).decode("utf-8")
             parts.append({
                 "inline_data": {
-                    "mime_type": "image/png",
+                    "mime_type": "image/jpeg" if is_pc else "image/png",
                     "data": b64_img
                 }
             })
 
         payload = {
-            "system_instruction": {"parts": [{"text": SYSTEM_PROMPT}]},
+            "system_instruction": {"parts": [{"text": sys_prompt}]},
             "contents": [{"parts": parts}],
             "generationConfig": {
                 "temperature": 0.1,

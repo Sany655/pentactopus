@@ -1,0 +1,6 @@
+file 'C:/All/works/pentactopus/marketing/video_assets/scene1_intro.mp4'
+file 'C:/All/works/pentactopus/marketing/video_assets/scene2_architecture.mp4'
+file 'C:/All/works/pentactopus/marketing/video_assets/scene3_installation.mp4'
+file 'C:/All/works/pentactopus/marketing/video_assets/scene4_remote_control.mp4'
+file 'C:/All/works/pentactopus/marketing/video_assets/scene5_pricing.mp4'
+file 'C:/All/works/pentactopus/marketing/video_assets/scene6_enterprise.mp4'

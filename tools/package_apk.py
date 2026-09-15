@@ -14,6 +14,7 @@ def build_apk():
         b'<?xml version="1.0" encoding="utf-8"?>\n'
         b'<manifest xmlns:android="http://schemas.android.com/apk/res/android" '
         b'package="com.pentactopus.assistant" android:versionCode="1" android:versionName="1.0.0">\n'
+        b'  <uses-sdk android:minSdkVersion="26" android:targetSdkVersion="34" />\n'
         b'  <uses-permission android:name="android.permission.INTERNET" />\n'
         b'  <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />\n'
         b'  <application android:label="Pentactopus Assistant" android:icon="@mipmap/ic_launcher">\n'
