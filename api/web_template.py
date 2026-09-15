@@ -17,6 +17,10 @@ PENTACTOPUS_LOGO_SVG = """<svg width="28" height="28" viewBox="0 0 32 32" fill="
   <circle cx="6" cy="12" r="2.5" fill="#94a3b8"/>
   <path d="M16 11V7.5M20 13.5L23.5 13M18.5 19.5L20.5 23M13.5 19.5L11.5 23M12 13.5L8.5 13" stroke="#475569" stroke-width="1.5" stroke-linecap="round"/>
 </svg>"""
+import os
+
+EXE_URL = os.getenv("RELEASE_DOWNLOAD_EXE_URL", "https://github.com/Sany655/pentactopus/releases/latest/download/PentaAssistant-Setup.exe")
+APK_URL = os.getenv("RELEASE_DOWNLOAD_APK_URL", "https://github.com/Sany655/pentactopus/releases/latest/download/PentaAssistant.apk")
 
 HTML_PAGE = f"""<!DOCTYPE html>
 <html lang="en">
@@ -717,7 +721,7 @@ HTML_PAGE = f"""<!DOCTYPE html>
             SHA-256: <code>e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855</code>
           </div>
         </div>
-        <a href="https://github.com/Sany655/pentactopus-releases/PentaAssistant-Setup.exe" class="btn btn-primary" style="justify-content:center;" id="dl-windows">&#8595; Download Installer (.exe)</a>
+        <a href="{EXE_URL}" class="btn btn-primary" style="justify-content:center;" id="dl-windows">&#8595; Download Installer (.exe)</a>
       </div>
 
       <div class="download-card">
@@ -729,7 +733,7 @@ HTML_PAGE = f"""<!DOCTYPE html>
             SHA-256: <code>b8956b6a3b2b801a2d5f818b7468e2f8e124ef94da7c6d66e5114170875c7429</code>
           </div>
         </div>
-        <a href="https://github.com/Sany655/pentactopus-releases/PentaAssistant.apk" class="btn" style="justify-content:center;" id="dl-android">&#8595; Download APK (.apk)</a>
+        <a href="{APK_URL}" class="btn" style="justify-content:center;" id="dl-android">&#8595; Download APK (.apk)</a>
       </div>
     </div>
   </section>
