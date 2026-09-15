@@ -1029,10 +1029,10 @@ HTML_PAGE = f"""<!DOCTYPE html>
           body: JSON.stringify({{ code: code, email: currentUser ? currentUser.email : 'alex@pentactopus.com' }})
         }});
         const data = await res.json();
-        if (data.valid) {{
+        if (data.success || data.valid) {{
           statusEl.style.color = '#10b981';
-          statusEl.innerText = 'License activated: ' + data.license_key;
-          document.getElementById('dash-user-license').innerText = data.license_key;
+          statusEl.innerText = '✓ License activated: ' + (data.license_key || 'PENTA-PRO');
+          document.getElementById('dash-user-license').innerText = data.license_key || 'PENTA-PRO';
           document.getElementById('dash-role-badge').innerText = 'PRO SUBSCRIBER';
         }} else {{
           statusEl.style.color = '#ef4444';
