@@ -1127,7 +1127,7 @@ HTML_PAGE = f"""<!DOCTYPE html>
       </div>
       <div style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden;">
         <iframe id="demo-iframe"
-          src="https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=1&rel=0&modestbranding=1&color=white"
+          src="https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=0&rel=0&modestbranding=1&color=white"
           style="position:absolute;top:0;left:0;width:100%;height:100%;border:none;"
           allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
           allowfullscreen
