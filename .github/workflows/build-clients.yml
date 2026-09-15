@@ -203,7 +203,7 @@ jobs:
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           
           # Clone the public releases repository
-          git clone https://x-access-token:${RELEASE_REPO_PAT}@github.com/Sany655/pentactopus-releases.git public-repo
+          git clone "https://${RELEASE_REPO_PAT}@github.com/Sany655/pentactopus-releases.git" public-repo
           
           # Copy the compiled binaries into the repository
           cp ./release-assets/PentaAssistant-Setup.exe public-repo/
