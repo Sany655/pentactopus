@@ -36,6 +36,10 @@ jobs:
         working-directory: ./penta-app
         run: npm run build
 
+      - name: Build Python Sidecar (penta_daemon)
+        shell: powershell
+        run: .\build_sidecar.ps1 -Target "x86_64-pc-windows-msvc"
+
       - name: Build Windows Tauri App
         working-directory: ./penta-app
         run: npm run tauri build
