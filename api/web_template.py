@@ -721,7 +721,7 @@ HTML_PAGE = f"""<!DOCTYPE html>
             SHA-256: <code>e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855</code>
           </div>
         </div>
-        <a href="/api/download/windows" class="btn btn-primary" style="justify-content:center;" id="dl-windows">&#8595; Download Installer (.exe)</a>
+        <a href="{EXE_URL}" class="btn btn-primary" style="justify-content:center;" id="dl-windows">&#8595; Download Installer (.exe)</a>
         <div style="font-size: 11px; color: var(--text-muted); margin-top: 8px; line-height: 1.4;">
           <strong style="color: var(--heading);">Windows SmartScreen Notice:</strong> Because we are an open-source indie developer, Windows may show a "protected your PC" warning. Click <strong>More info</strong> &rarr; <strong>Run anyway</strong> to install safely.
         </div>
@@ -736,7 +736,7 @@ HTML_PAGE = f"""<!DOCTYPE html>
             SHA-256: <code>b8956b6a3b2b801a2d5f818b7468e2f8e124ef94da7c6d66e5114170875c7429</code>
           </div>
         </div>
-        <a href="/api/download/android" class="btn" style="justify-content:center;" id="dl-android">&#8595; Download APK (.apk)</a>
+        <a href="{APK_URL}" class="btn" style="justify-content:center;" id="dl-android">&#8595; Download APK (.apk)</a>
       </div>
     </div>
   </section>
