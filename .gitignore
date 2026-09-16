@@ -47,3 +47,6 @@ $RECYCLE.BIN/
 .idea/
 *.swp
 *.swo
+
+# Allow spec file
+!PentaAssistant-Setup.spec
