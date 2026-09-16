@@ -722,6 +722,9 @@ HTML_PAGE = f"""<!DOCTYPE html>
           </div>
         </div>
         <a href="{EXE_URL}" class="btn btn-primary" style="justify-content:center;" id="dl-windows">&#8595; Download Installer (.exe)</a>
+        <div style="font-size: 11px; color: var(--text-muted); margin-top: 8px; line-height: 1.4;">
+          <strong style="color: var(--heading);">Windows SmartScreen Notice:</strong> Because we are an open-source indie developer, Windows may show a "protected your PC" warning. Click <strong>More info</strong> &rarr; <strong>Run anyway</strong> to install safely.
+        </div>
       </div>
 
       <div class="download-card">
