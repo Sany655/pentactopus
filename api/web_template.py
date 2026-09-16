@@ -1122,14 +1122,17 @@ HTML_PAGE = f"""<!DOCTYPE html>
              const match = exe.name.match(/v(\d+\.\d+\.\d+)/);
              if (match) {{
                  document.getElementById('win-version').innerText = 'Version: ' + match[1];
-                 document.getElementById('dl-windows').href = exe.download_url;
+                 // Use github.com/raw/ path (CDN-backed) instead of raw.githubusercontent.com
+                 const exeUrl = 'https://github.com/Sany655/pentactopus-releases/raw/main/' + exe.name;
+                 document.getElementById('dl-windows').href = exeUrl;
              }}
          }}
          if (apk) {{
              const match = apk.name.match(/v(\d+\.\d+\.\d+)/);
              if (match) {{
                  document.getElementById('and-version').innerText = 'Version: ' + match[1];
-                 document.getElementById('dl-android').href = apk.download_url;
+                 const apkUrl = 'https://github.com/Sany655/pentactopus-releases/raw/main/' + apk.name;
+                 document.getElementById('dl-android').href = apkUrl;
              }}
          }}
       }}).catch(e => console.log('Failed to fetch dynamic version: ', e));
