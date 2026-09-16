@@ -716,7 +716,7 @@ HTML_PAGE = f"""<!DOCTYPE html>
         <div>
           <h4>Pentactopus for Windows</h4>
           <div class="download-meta">
-            Version: 2.5.0 • Size: 12.4 MB • Architecture: x64<br>
+            <span id="win-version">Version: 2.5.0</span> • Size: 12.4 MB • Architecture: x64<br>
             OS: Windows 10, 11 (64-bit)<br>
             SHA-256: <code>e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855</code>
           </div>
@@ -731,7 +731,7 @@ HTML_PAGE = f"""<!DOCTYPE html>
         <div>
           <h4>Pentactopus for Android</h4>
           <div class="download-meta">
-            Version: 2.5.0 • Size: 14.2 MB • Architecture: Universal (arm64, armv7, x86_64)<br>
+            <span id="and-version">Version: 2.5.0</span> • Size: 14.2 MB • Architecture: Universal (arm64, armv7, x86_64)<br>
             OS: Android 8.0 (Oreo) &amp; 9.0 (Pie) through Android 15+ (API 26–35)<br>
             SHA-256: <code>b8956b6a3b2b801a2d5f818b7468e2f8e124ef94da7c6d66e5114170875c7429</code>
           </div>
@@ -1112,6 +1112,28 @@ HTML_PAGE = f"""<!DOCTYPE html>
       const iframe = document.getElementById('demo-iframe');
       iframe.src = iframe.src;
     }}
+    // Fetch dynamic latest version from GitHub
+    fetch("https://api.github.com/repos/Sany655/pentactopus-releases/contents/")
+      .then(r => r.json())
+      .then(data => {{
+         const exe = data.find(f => f.name.endsWith('.exe'));
+         const apk = data.find(f => f.name.endsWith('.apk'));
+         if (exe) {{
+             const match = exe.name.match(/v(\d+\.\d+\.\d+)/);
+             if (match) {{
+                 document.getElementById('win-version').innerText = 'Version: ' + match[1];
+                 document.getElementById('dl-windows').href = exe.download_url;
+             }}
+         }}
+         if (apk) {{
+             const match = apk.name.match(/v(\d+\.\d+\.\d+)/);
+             if (match) {{
+                 document.getElementById('and-version').innerText = 'Version: ' + match[1];
+                 document.getElementById('dl-android').href = apk.download_url;
+             }}
+         }}
+      }}).catch(e => console.log('Failed to fetch dynamic version: ', e));
+
     document.addEventListener('keydown', function(e) {{
       if (e.key === 'Escape') closeDemoModal();
     }});
