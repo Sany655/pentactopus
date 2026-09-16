@@ -11,6 +11,7 @@ Provides enterprise endpoints for:
 from http.server import BaseHTTPRequestHandler
 import json
 import urllib.parse
+import urllib.request
 import os
 import sys
 
@@ -94,7 +95,33 @@ class handler(BaseHTTPRequestHandler):
 
         if path.startswith("/download/"):
             fname = os.path.basename(path)
-            # 1. Custom URL overrides via environment variables
+            # 1. Dynamic GitHub API Redirection for versioned filenames
+            if fname in ["windows", "android"]:
+                try:
+                    req = urllib.request.Request("https://api.github.com/repos/Sany655/pentactopus-releases/contents/")
+                    # Adding a fake User-Agent because GitHub API requires it
+                    req.add_header('User-Agent', 'Pentactopus-Vercel-App')
+                    with urllib.request.urlopen(req) as response:
+                        contents = json.loads(response.read().decode('utf-8'))
+                        
+                        target_ext = ".exe" if fname == "windows" else ".apk"
+                        
+                        # Find the first file matching the extension
+                        target_url = None
+                        for item in contents:
+                            if item.get("type") == "file" and item.get("name", "").endswith(target_ext):
+                                target_url = item.get("download_url")
+                                break
+                        
+                        if target_url:
+                            self.send_response(302)
+                            self.send_header("Location", target_url)
+                            self.end_headers()
+                            return
+                except Exception as e:
+                    print(f"Failed to fetch dynamic github release: {e}")
+
+            # 2. Custom URL overrides via environment variables
             if fname.endswith(".exe") and os.getenv("RELEASE_DOWNLOAD_EXE_URL"):
                 self.send_response(302)
                 self.send_header("Location", os.getenv("RELEASE_DOWNLOAD_EXE_URL"))
@@ -107,7 +134,7 @@ class handler(BaseHTTPRequestHandler):
                 self.end_headers()
                 return
 
-            # 2. Check local dist, root, or public/static downloads directory
+            # 3. Check local dist, root, or public/static downloads directory
             local_paths = [
                 os.path.join(BASE_DIR, fname),
                 os.path.join(BASE_DIR, "dist", fname),

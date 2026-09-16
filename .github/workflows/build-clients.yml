@@ -203,12 +203,15 @@ jobs:
           # Clone the public releases repository
           git clone "https://${RELEASE_REPO_PAT}@github.com/Sany655/pentactopus-releases.git" public-repo
           
-          # Copy the compiled binaries into the repository
-          cp ./release-assets/PentaAssistant-Setup.exe public-repo/
-          cp ./release-assets/PentaAssistant.apk public-repo/
+          # Delete old binaries so they don't pile up in the repository
+          cd public-repo
+          git rm -q *.exe *.apk || true
+          
+          # Copy and rename the compiled binaries into the repository with versioning
+          cp ../release-assets/PentaAssistant-Setup.exe PentaAssistant-Setup-${{ github.ref_name }}-latest.exe
+          cp ../release-assets/PentaAssistant.apk PentaAssistant-${{ github.ref_name }}-latest.apk
           
           # Commit and push
-          cd public-repo
-          git add PentaAssistant-Setup.exe PentaAssistant.apk
-          git commit -m "chore: automated binary release for ${{ github.ref_name }}" || echo "No changes to commit"
+          git add .
+          git commit -m "chore: automated versioned binary release for ${{ github.ref_name }}" || echo "No changes to commit"
           git push origin main
