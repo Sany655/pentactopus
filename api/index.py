@@ -23,7 +23,9 @@ if BASE_DIR not in sys.path:
 from hub.device_hub import DeviceHub
 from api.coupons import CouponManager
 from api.billing import BillingManager
+from api.user_store import UserStore
 from api.admin_dashboard import AdminDashboard
+from api.webrtc_signaling import SignalingHub
 from api.user_store import UserStore, AuthError, LockoutError
 from api.web_template import HTML_PAGE
 
@@ -241,6 +243,17 @@ class handler(BaseHTTPRequestHandler):
                 self._send_cors(200)
                 self.wfile.write(json.dumps({"tasks": tasks}).encode("utf-8"))
                 return
+        if path == "/api/webrtc/poll":
+            auth_header = self.headers.get("Authorization", "")
+            if not UserStore.validate_session(auth_header):
+                self._send_cors(401)
+                self.wfile.write(json.dumps({"error": "Unauthorized"}).encode("utf-8"))
+                return
+            target_id = query.get("target_id", [""])[0]
+            signals = SignalingHub.poll_signals(target_id)
+            self._send_cors(200)
+            self.wfile.write(json.dumps({"signals": signals}).encode("utf-8"))
+            return
 
         self._send_cors(404)
         self.wfile.write(json.dumps({"error": "Endpoint not found"}).encode("utf-8"))
@@ -395,6 +408,48 @@ class handler(BaseHTTPRequestHandler):
             }).encode("utf-8"))
             return
 
+        if path == "/api/webrtc/signal":
+            auth_header = self.headers.get("Authorization", "")
+            if not UserStore.validate_session(auth_header):
+                self._send_cors(401)
+                self.wfile.write(json.dumps({"error": "Unauthorized"}).encode("utf-8"))
+                return
+            target_id = data.get("target_id")
+            sender_id = data.get("sender_id")
+            signal_type = data.get("type")
+            payload = data.get("payload")
+            
+            if not all([target_id, sender_id, signal_type, payload]):
+                self._send_cors(400)
+                self.wfile.write(json.dumps({"error": "Missing parameters"}).encode("utf-8"))
+                return
+                
+            SignalingHub.push_signal(target_id, sender_id, signal_type, payload)
+            self._send_cors(200)
+            self.wfile.write(json.dumps({"success": True}).encode("utf-8"))
+            return
+
+        if path == "/api/webrtc/signal":
+            auth_header = self.headers.get("Authorization", "")
+            if not UserStore.validate_session(auth_header):
+                self._send_cors(401)
+                self.wfile.write(json.dumps({"error": "Unauthorized"}).encode("utf-8"))
+                return
+            target_id = data.get("target_id")
+            sender_id = data.get("sender_id")
+            signal_type = data.get("type")
+            payload = data.get("payload")
+            
+            if not all([target_id, sender_id, signal_type, payload]):
+                self._send_cors(400)
+                self.wfile.write(json.dumps({"error": "Missing parameters"}).encode("utf-8"))
+                return
+                
+            SignalingHub.push_signal(target_id, sender_id, signal_type, payload)
+            self._send_cors(200)
+            self.wfile.write(json.dumps({"success": True}).encode("utf-8"))
+            return
+
         # ----------------------------------------------------------------------
         # Billing & Coupons
         # ----------------------------------------------------------------------
@@ -448,6 +503,63 @@ class handler(BaseHTTPRequestHandler):
                 self._send_cors(400)
             self.wfile.write(json.dumps(res).encode("utf-8"))
             return
+
+        # ----------------------------------------------------------------------
+        # Admin Operations
+        # ----------------------------------------------------------------------
+        if path.startswith("/api/admin/"):
+            auth_header = self.headers.get("Authorization", "")
+            if not AdminDashboard.verify_auth(auth_header):
+                self._send_cors(403)
+                self.wfile.write(json.dumps({"success": False, "error": "Admin privileges required"}).encode("utf-8"))
+                return
+
+            if path == "/api/admin/user/role":
+                email = data.get("email")
+                role = data.get("role")
+                plan = data.get("plan")
+                if email and role:
+                    try:
+                        user = UserStore.update_role(email, role, plan)
+                        self._send_cors(200)
+                        self.wfile.write(json.dumps({"success": True, "user": user}).encode("utf-8"))
+                    except Exception as e:
+                        self._send_cors(400)
+                        self.wfile.write(json.dumps({"success": False, "error": str(e)}).encode("utf-8"))
+                else:
+                    self._send_cors(400)
+                    self.wfile.write(json.dumps({"success": False, "error": "Missing parameters"}).encode("utf-8"))
+                return
+
+            if path == "/api/admin/coupons/create":
+                try:
+                    c = CouponManager.create_coupon(
+                        code=data.get("code"),
+                        discount_type=data.get("discount_type", "percent"),
+                        value=float(data.get("value", 100)),
+                        max_uses=int(data.get("max_uses", 100))
+                    )
+                    self._send_cors(200)
+                    self.wfile.write(json.dumps({"success": True, "coupon": c}).encode("utf-8"))
+                except Exception as e:
+                    self._send_cors(400)
+                    self.wfile.write(json.dumps({"success": False, "error": str(e)}).encode("utf-8"))
+                return
+            
+            if path == "/api/admin/coupons/toggle":
+                try:
+                    code = data.get("code")
+                    # data.get("enabled") might be a boolean or a string depending on JS
+                    enable_str = str(data.get("enabled", "")).lower()
+                    enable = enable_str == "true" or enable_str == "1"
+                    
+                    c = CouponManager.toggle_coupon(code, enable)
+                    self._send_cors(200)
+                    self.wfile.write(json.dumps({"success": True, "coupon": c}).encode("utf-8"))
+                except Exception as e:
+                    self._send_cors(400)
+                    self.wfile.write(json.dumps({"success": False, "error": str(e)}).encode("utf-8"))
+                return
 
         # ----------------------------------------------------------------------
         # Admin Operations (Protected by RBAC / Secret Key)

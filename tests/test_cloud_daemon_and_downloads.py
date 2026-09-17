@@ -93,8 +93,12 @@ def test_api_device_action_and_task_polling():
     DeviceHub.register_device(dev_id, "Test Unit", "windows")
 
     # 1. Dispatch action
+    from api.user_store import UserStore
+    token = UserStore.create_session("admin@pentactopus.com")
+    auth_header = f"Bearer {token}"
+    
     post_payload = json.dumps({"type": "hotkey", "hotkey": "vol_up"}).encode("utf-8")
-    req_post = MockHandler("POST", f"/api/device/{dev_id}/action", body=post_payload)
+    req_post = MockHandler("POST", f"/api/device/{dev_id}/action", body=post_payload, headers={"Authorization": auth_header, "Content-Length": str(len(post_payload))})
     req_post.do_POST()
     
     post_response = req_post.wfile.getvalue().decode("utf-8")
@@ -104,7 +108,7 @@ def test_api_device_action_and_task_polling():
     task_id = post_json["task_id"]
 
     # 2. Poll tasks via GET /api/device/:id/tasks
-    req_get = MockHandler("GET", f"/api/device/{dev_id}/tasks")
+    req_get = MockHandler("GET", f"/api/device/{dev_id}/tasks", headers={"Authorization": auth_header, "Content-Length": "0"})
     req_get.do_GET()
     
     get_response = req_get.wfile.getvalue().decode("utf-8")
@@ -129,8 +133,11 @@ def test_api_agent_mission_dispatch():
     dev_id = "test_mission_pc"
     DeviceHub.register_device(dev_id, "Mission PC", "windows")
 
+    from api.user_store import UserStore
+    token = UserStore.create_session("admin@pentactopus.com")
+    
     payload = json.dumps({"objective": "Open Calculator and calculate 42", "device_id": dev_id}).encode("utf-8")
-    req = MockHandler("POST", "/api/agent/dispatch", body=payload)
+    req = MockHandler("POST", "/api/agent/dispatch", body=payload, headers={"Authorization": f"Bearer {token}", "Content-Length": str(len(payload))})
     req.do_POST()
 
     output = req.wfile.getvalue().decode("utf-8")
