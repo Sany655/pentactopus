@@ -18,3 +18,7 @@ tauri-plugin-shell = "2.3.6"
 [features]
 default = ["custom-protocol"]
 custom-protocol = ["tauri/custom-protocol"]
+
+[lib]
+name = "penta_assistant"
+crate-type = ["staticlib", "cdylib", "rlib"]
