@@ -11,7 +11,7 @@ python -m pip install pyinstaller pillow websockets pyautogui pynput
 # Build the daemon as a single executable
 # We use --noconsole to hide the terminal window when it runs in the background
 # We name it penta_daemon so the output is penta_daemon.exe
-pyinstaller --onefile --noconsole --name penta_daemon `
+python -m PyInstaller --onefile --noconsole --name penta_daemon `
     --hidden-import PIL `
     --hidden-import PIL.Image `
     --hidden-import PIL.ImageGrab `
