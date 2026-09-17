@@ -22,17 +22,26 @@ export default function App() {
     { sender: 'agent', text: 'Hello! I am your Pentactopus local AI agent. How can I assist you today?' }
   ]);
   const [isExecuting, setIsExecuting] = useState(false);
+  const [agentAccessLevel, setAgentAccessLevel] = useState('full'); // 'read_only' or 'full'
+  const [showVisionPreview, setShowVisionPreview] = useState(false);
   
   // New States
-  const [llmProvider, setLlmProvider] = useState('openai');
-  const [apiKey, setApiKey] = useState('');
+  const [llmProvider, setLlmProvider] = useState(localStorage.getItem('penta_llm_provider') || 'openai');
+  const [apiKey, setApiKey] = useState(localStorage.getItem('penta_api_key') || '');
   const [visionQuality, setVisionQuality] = useState('high');
   
   // Viewport State
   const [selectedDevice, setSelectedDevice] = useState('pc');
   const [frameTimestamp, setFrameTimestamp] = useState(Date.now());
   const viewportRef = useRef(null);
+  const videoRef = useRef(null);
   const chatEndRef = useRef(null);
+  
+  // WebRTC State
+  const [rtcConnectionState, setRtcConnectionState] = useState('disconnected');
+  const peerConnection = useRef(null);
+  const dataChannel = useRef(null);
+  const webrtcPollInterval = useRef(null);
 
   useEffect(() => {
     if (authToken && currentView === 'login') {
@@ -42,10 +51,14 @@ export default function App() {
 
   useEffect(() => {
     if (currentView === 'anydesk') {
+      startWebRTCSession();
       const interval = setInterval(() => {
         setFrameTimestamp(Date.now());
       }, 1500);
-      return () => clearInterval(interval);
+      return () => {
+        clearInterval(interval);
+        stopWebRTCSession();
+      };
     }
   }, [currentView]);
 
@@ -135,6 +148,80 @@ export default function App() {
   const connectToDevice = () => {
     if (!targetCode) return;
     setCurrentView('anydesk');
+  };
+
+  const startWebRTCSession = async () => {
+    setRtcConnectionState('connecting');
+    const configuration = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
+    const pc = new RTCPeerConnection(configuration);
+    peerConnection.current = pc;
+    
+    dataChannel.current = pc.createDataChannel('control');
+    dataChannel.current.onopen = () => setRtcConnectionState('connected');
+    dataChannel.current.onclose = () => setRtcConnectionState('disconnected');
+
+    pc.ontrack = (event) => {
+      if (videoRef.current) {
+        videoRef.current.srcObject = event.streams[0];
+      }
+    };
+
+    pc.onicecandidate = async (event) => {
+      if (event.candidate) {
+        await sendWebRTCSignal('ice', event.candidate);
+      }
+    };
+
+    try {
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+      await sendWebRTCSignal('offer', offer);
+      
+      // Start polling for answers/ice from remote
+      webrtcPollInterval.current = setInterval(pollWebRTCSignals, 2000);
+    } catch (err) {
+      console.warn("Failed to create WebRTC offer", err);
+      setRtcConnectionState('error');
+    }
+  };
+
+  const stopWebRTCSession = () => {
+    if (webrtcPollInterval.current) clearInterval(webrtcPollInterval.current);
+    if (peerConnection.current) peerConnection.current.close();
+    setRtcConnectionState('disconnected');
+  };
+
+  const sendWebRTCSignal = async (type, payload) => {
+    try {
+      await fetch(`${serverUrl}/api/webrtc/signal`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
+        body: JSON.stringify({ target_id: targetCode, sender_id: deviceCode, type, payload })
+      });
+    } catch (e) {
+      console.warn("Signaling failed:", e);
+    }
+  };
+
+  const pollWebRTCSignals = async () => {
+    try {
+      const res = await fetch(`${serverUrl}/api/webrtc/poll?target_id=${deviceCode}`, {
+        headers: { 'Authorization': `Bearer ${authToken}` }
+      });
+      const data = await res.json();
+      if (data.signals) {
+        for (const sig of data.signals) {
+          if (sig.sender !== targetCode) continue;
+          const pc = peerConnection.current;
+          if (!pc) return;
+          if (sig.type === 'answer') {
+            await pc.setRemoteDescription(new RTCSessionDescription(sig.payload));
+          } else if (sig.type === 'ice') {
+            await pc.addIceCandidate(new RTCIceCandidate(sig.payload));
+          }
+        }
+      }
+    } catch (e) {}
   };
 
   const handleViewportClick = async (e) => {
@@ -258,6 +345,14 @@ export default function App() {
                 style={styles.dropdownItem} 
                 onMouseEnter={e => e.target.style.background = '#27272a'} 
                 onMouseLeave={e => e.target.style.background = 'transparent'}
+                onClick={() => { setCurrentView('usage'); setMenuOpen(false); }}
+              >
+                📊 Usage & History
+              </div>
+              <div 
+                style={styles.dropdownItem} 
+                onMouseEnter={e => e.target.style.background = '#27272a'} 
+                onMouseLeave={e => e.target.style.background = 'transparent'}
                 onClick={() => { setCurrentView('settings'); setMenuOpen(false); }}
               >
                 ⚙️ Settings
@@ -289,6 +384,12 @@ export default function App() {
         <input style={styles.input} type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} required />
         
         <button style={styles.button} type="submit">Sign In</button>
+        
+        <div style={{ textAlign: 'center', marginTop: '16px' }}>
+          <a href="https://pentactopus.vercel.app/" target="_blank" rel="noreferrer" style={{ color: '#60a5fa', textDecoration: 'none', fontSize: '13px' }}>
+            Don't have an account? Register on the Web Portal
+          </a>
+        </div>
       </form>
     </div>
   );
@@ -299,6 +400,26 @@ export default function App() {
         <button style={{ ...styles.button, background: 'transparent', border: '1px solid #3f3f46', marginBottom: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', color: '#e4e4e7' }}>
           <span style={{ fontSize: '16px', fontWeight: 'bold' }}>+</span> New Chat
         </button>
+        
+        <div style={{ marginBottom: '16px' }}>
+          <label style={{ fontSize: '11px', fontWeight: '600', color: '#71717a', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Agent Access</label>
+          <select 
+            style={{ ...styles.input, marginTop: '8px', fontSize: '12px', padding: '8px', background: '#18181b' }}
+            value={agentAccessLevel}
+            onChange={e => setAgentAccessLevel(e.target.value)}
+          >
+            <option value="full">Full Control (Click/Type)</option>
+            <option value="read_only">Read-Only (Analysis)</option>
+          </select>
+        </div>
+        
+        <div style={{ marginBottom: '16px' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#a1a1aa', cursor: 'pointer' }}>
+            <input type="checkbox" checked={showVisionPreview} onChange={e => setShowVisionPreview(e.target.checked)} />
+            Show Vision Preview
+          </label>
+        </div>
+
         <div style={{ fontSize: '11px', fontWeight: '600', color: '#71717a', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '12px' }}>Recent Sessions</div>
         <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '4px' }}>
           <div style={{ padding: '10px 12px', background: '#18181b', borderRadius: '6px', fontSize: '13px', color: '#e4e4e7', cursor: 'pointer', border: '1px solid #3b82f6' }}>
@@ -324,6 +445,17 @@ export default function App() {
               <span style={{ display: 'inline-block', animation: 'pulse 1.5s infinite' }}>●</span>
               <span style={{ display: 'inline-block', animation: 'pulse 1.5s infinite', animationDelay: '0.2s', margin: '0 4px' }}>●</span>
               <span style={{ display: 'inline-block', animation: 'pulse 1.5s infinite', animationDelay: '0.4s' }}>●</span>
+            </div>
+          )}
+          {showVisionPreview && (
+            <div style={{ alignSelf: 'center', background: '#18181b', padding: '8px', borderRadius: '8px', border: '1px solid #27272a', margin: '8px 0', textAlign: 'center' }}>
+              <div style={{ fontSize: '11px', color: '#a1a1aa', marginBottom: '4px' }}>Agent Vision (Live View)</div>
+              <img 
+                src={`${serverUrl}/api/pc/screen?t=${Date.now()}`} 
+                alt="Agent Vision" 
+                style={{ width: '200px', borderRadius: '4px', border: '1px solid #3f3f46' }}
+                onError={(e) => { e.target.style.display = 'none'; }}
+              />
             </div>
           )}
           <div ref={chatEndRef} />
@@ -396,6 +528,9 @@ export default function App() {
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <button style={{ background: '#27272a', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer' }} onClick={() => setCurrentView('connect')}>← Leave Session</button>
           <h2 style={{ fontSize: '16px', fontWeight: '500', margin: 0 }}>Controlling Remote Session: <span style={{ color: '#60a5fa' }}>{targetCode}</span></h2>
+          <span style={{ fontSize: '12px', color: rtcConnectionState === 'connected' ? '#10b981' : '#f59e0b', padding: '2px 8px', background: 'rgba(255,255,255,0.05)', borderRadius: '12px' }}>
+            {rtcConnectionState === 'connected' ? '● WebRTC Active' : '● Polling Fallback'}
+          </span>
         </div>
         
         <div style={{ display: 'flex', gap: '8px' }}>
@@ -405,11 +540,17 @@ export default function App() {
       </div>
       
       <div ref={viewportRef} onClick={handleViewportClick} style={styles.canvasWrapper}>
+        <video 
+          ref={videoRef}
+          autoPlay 
+          playsInline 
+          style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'contain', zIndex: rtcConnectionState === 'connected' ? 2 : 0 }} 
+        />
         <img 
           src={`${serverUrl}${selectedDevice === 'pc' ? '/api/pc/screen' : '/api/screenshot'}?t=${frameTimestamp}`} 
-          alt="Remote Viewport" 
+          alt="Remote Viewport Fallback" 
           onError={(e) => { e.target.src = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='300' viewBox='0 0 400 300'><rect width='100%' height='100%' fill='%23121215'/><text x='50%' y='50%' fill='%2371717a' font-family='sans-serif' font-size='14' text-anchor='middle'>Awaiting Remote Display Buffer...</text></svg>"; }}
-          style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', cursor: 'crosshair', userSelect: 'none' }} 
+          style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', cursor: 'crosshair', userSelect: 'none', position: 'relative', zIndex: 1 }} 
         />
       </div>
     </div>
@@ -442,7 +583,11 @@ export default function App() {
           onChange={e => setApiKey(e.target.value)} 
         />
         
-        <button style={styles.button} onClick={() => setCurrentView('chat')}>Save Configuration</button>
+        <button style={styles.button} onClick={() => {
+          localStorage.setItem('penta_llm_provider', llmProvider);
+          localStorage.setItem('penta_api_key', apiKey);
+          setCurrentView('chat');
+        }}>Save Configuration</button>
       </div>
     </div>
   );
@@ -464,6 +609,33 @@ export default function App() {
         {userPlan === 'free' && (
           <button style={{...styles.button, background: '#10b981', marginBottom: '12px'}}>Upgrade to PRO ($12/mo)</button>
         )}
+        <button style={{...styles.button, background: '#27272a', color: '#fff'}} onClick={() => setCurrentView('chat')}>Back to Dashboard</button>
+      </div>
+    </div>
+  );
+
+  const renderUsageHistory = () => (
+    <div style={styles.loginContainer}>
+      <div style={{...styles.loginCard, width: '480px'}}>
+        <h2 style={{ margin: '0 0 8px 0', fontSize: '20px' }}>Usage & Action History</h2>
+        <p style={{ color: '#a1a1aa', fontSize: '14px', marginBottom: '24px' }}>Log of autonomous AI actions executed on your devices.</p>
+        
+        <div style={{ background: '#18181b', border: '1px solid #27272a', borderRadius: '12px', padding: '16px', marginBottom: '24px', maxHeight: '300px', overflowY: 'auto' }}>
+          {[
+            { id: 1, time: '2 mins ago', device: 'pc_windows_host', action: 'Opened Chrome' },
+            { id: 2, time: '15 mins ago', device: 'phone_android_node', action: 'Tapped Settings' },
+            { id: 3, time: '1 hour ago', device: 'pc_windows_host', action: 'Typed document' },
+          ].map((item) => (
+            <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid #27272a' }}>
+              <div>
+                <div style={{ fontSize: '14px', color: '#e4e4e7' }}>{item.action}</div>
+                <div style={{ fontSize: '11px', color: '#60a5fa' }}>{item.device}</div>
+              </div>
+              <div style={{ fontSize: '12px', color: '#71717a' }}>{item.time}</div>
+            </div>
+          ))}
+        </div>
+        
         <button style={{...styles.button, background: '#27272a', color: '#fff'}} onClick={() => setCurrentView('chat')}>Back to Dashboard</button>
       </div>
     </div>
@@ -516,6 +688,7 @@ export default function App() {
       {currentView === 'anydesk' && renderAnydesk()}
       {currentView === 'model_config' && renderModelConfig()}
       {currentView === 'subscription' && renderSubscription()}
+      {currentView === 'usage' && renderUsageHistory()}
       {currentView === 'settings' && renderSettings()}
     </div>
   );

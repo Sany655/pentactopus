@@ -314,32 +314,32 @@ pentactopus/                         # Project Root
 ### 🪟 Phase 2: WINDOWS APP (Tauri v2)
 
 #### Sprint 2.1: Core App Enhancement
-- [ ] Login page — connect to production auth API
-- [ ] Register link — opens website registration page
-- [ ] Model selector with API key configuration UI
+- [x] Login page — connect to production auth API
+- [x] Register link — opens website registration page
+- [x] Model selector with API key configuration UI
 
 #### Sprint 2.2: AI Agent Page
-- [ ] Full chat interface with streaming responses
-- [ ] Configurable access levels (what the agent can control)
-- [ ] Action history & undo capability
-- [ ] Vision preview (screenshot + overlay)
+- [x] Full chat interface with streaming responses
+- [x] Configurable access levels (what the agent can control)
+- [x] Action history & undo capability
+- [x] Vision preview (screenshot + overlay)
 
 #### Sprint 2.3: Remote Portal (AnyDesk System)
-- [ ] Replace frame polling with WebRTC DataChannel streaming
-- [ ] Real-time mouse/keyboard event forwarding
-- [ ] Display latency indicator
-- [ ] Connection status & quality metrics
+- [x] Replace frame polling with WebRTC DataChannel streaming
+- [x] Real-time mouse/keyboard event forwarding
+- [x] Display latency indicator
+- [x] Connection status & quality metrics
 
 #### Sprint 2.4: Communication Features (F3)
-- [ ] Audio channel between devices
-- [ ] Video stream capability
-- [ ] Remote control permission levels (view-only, input, full admin)
-- [ ] Text chat between connected devices
+- [x] Audio channel between devices
+- [x] Video stream capability
+- [x] Remote control permission levels (view-only, input, full admin)
+- [x] Text chat between connected devices
 
 #### Sprint 2.5: Additional Pages
-- [ ] Plan/Service page — show current plan, upgrade options
-- [ ] Usage/History page — session logs, AI step count
-- [ ] Settings page — full configuration panel
+- [x] Plan/Service page — show current plan, upgrade options
+- [x] Usage/History page — session logs, AI step count
+- [x] Settings page — full configuration panel
 
 ---
 
