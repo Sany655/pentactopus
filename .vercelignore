@@ -1,0 +1,33 @@
+# Ignore native client app and its huge build artifacts (node_modules, target)
+penta-app/
+
+# Ignore local desktop and test tools
+tests/
+tools/
+.pytest_cache/
+
+# Ignore documentation and marketing assets
+docs/
+marketing/
+*.mp4
+
+# Ignore binary installers
+*.exe
+*.apk
+
+# Ignore local database (if any)
+*.db
+
+# Ignore development configs and scripts
+.git/
+.github/
+.vscode/
+ui.py
+local_ui_template.py
+run_sidecar.py
+build_sidecar.ps1
+main.py
+
+# Python cache
+__pycache__/
+*.pyc
