@@ -176,8 +176,8 @@ jobs:
       - name: Create GitHub Release and upload binaries
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.ref_name }}
-          name: "Pentactopus ${{ github.ref_name }}"
+          tag_name: ${{ github.ref_name == 'main' && 'latest' || github.ref_name }}
+          name: "Pentactopus ${{ github.ref_name == 'main' && 'Latest' || github.ref_name }}"
           body: |
             ## Pentactopus ${{ github.ref_name }}
 
@@ -220,8 +220,8 @@ jobs:
           git rm -q *.exe *.apk || true
           
           # Copy and rename the compiled binaries into the repository with versioning
-          cp ../release-assets/PentaAssistant-Setup.exe PentaAssistant-Setup-${{ github.ref_name }}-latest.exe
-          cp ../release-assets/PentaAssistant.apk PentaAssistant-${{ github.ref_name }}-latest.apk
+          cp ../release-assets/PentaAssistant-Setup.exe PentaAssistant-Setup-${{ github.ref_name == 'main' && 'latest' || github.ref_name }}.exe
+          cp ../release-assets/PentaAssistant.apk PentaAssistant-${{ github.ref_name == 'main' && 'latest' || github.ref_name }}.apk
           
           # Commit and push
           git add .
