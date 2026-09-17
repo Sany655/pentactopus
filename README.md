@@ -18,6 +18,9 @@
 ### Built-in Authentication & Workstation Access
 ![Pentactopus Authentication Portal](docs/auth_modal_preview.png)
 
+### Native Desktop Client
+![Pentactopus Desktop Agent](reports/ui_screenshots/desktop_agent_ui.png)
+
 ---
 
 ## 📖 Table of Contents
