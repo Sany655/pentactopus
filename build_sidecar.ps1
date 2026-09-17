@@ -24,7 +24,7 @@ python -m PyInstaller --onefile --noconsole --name penta_daemon `
     --hidden-import websockets.legacy.client `
     --hidden-import asyncio `
     --collect-all PIL `
-    penta/penta_daemon.py
+    run_sidecar.py
 
 if (-not (Test-Path "dist\penta_daemon.exe")) {
     Write-Error "PyInstaller failed to build penta_daemon.exe"
