@@ -5,7 +5,7 @@
 > **Methodology**: Agile | **Sequence**: Web → Windows → Android
 
 ---
-
+..
 ## 📌 System Identity
 
 | Field | Value |
@@ -314,56 +314,56 @@ pentactopus/                         # Project Root
 ### 🪟 Phase 2: WINDOWS APP (Tauri v2)
 
 #### Sprint 2.1: Core App Enhancement
-- [x] Login page — connect to production auth API
-- [x] Register link — opens website registration page
-- [x] Model selector with API key configuration UI
+- [ ] Login page — connect to production auth API
+- [ ] Register link — opens website registration page
+- [ ] Model selector with API key configuration UI
 
 #### Sprint 2.2: AI Agent Page
-- [x] Full chat interface with streaming responses
-- [x] Configurable access levels (what the agent can control)
-- [x] Action history & undo capability
-- [x] Vision preview (screenshot + overlay)
+- [ ] Full chat interface with streaming responses
+- [ ] Configurable access levels (what the agent can control)
+- [ ] Action history & undo capability
+- [ ] Vision preview (screenshot + overlay)
 
 #### Sprint 2.3: Remote Portal (AnyDesk System)
-- [x] Replace frame polling with WebRTC DataChannel streaming
-- [x] Real-time mouse/keyboard event forwarding
-- [x] Display latency indicator
-- [x] Connection status & quality metrics
+- [ ] Replace frame polling with WebRTC DataChannel streaming
+- [ ] Real-time mouse/keyboard event forwarding
+- [ ] Display latency indicator
+- [ ] Connection status & quality metrics
 
 #### Sprint 2.4: Communication Features (F3)
-- [x] Audio channel between devices
-- [x] Video stream capability
-- [x] Remote control permission levels (view-only, input, full admin)
-- [x] Text chat between connected devices
+- [ ] Audio channel between devices
+- [ ] Video stream capability
+- [ ] Remote control permission levels (view-only, input, full admin)
+- [ ] Text chat between connected devices
 
 #### Sprint 2.5: Additional Pages
-- [x] Plan/Service page — show current plan, upgrade options
-- [x] Usage/History page — session logs, AI step count
-- [x] Settings page — full configuration panel
+- [ ] Plan/Service page — show current plan, upgrade options
+- [ ] Usage/History page — session logs, AI step count
+- [ ] Settings page — full configuration panel
 
 ---
 
 ### 📱 Phase 3: ANDROID APP (Tauri v2)
 
 #### Sprint 3.1: Core App Port
-- [x] Login page adapted for mobile UX
-- [x] Agent chat page with touch-optimized input
-- [x] Settings page
+- [ ] Login page adapted for mobile UX
+- [ ] Agent chat page with touch-optimized input
+- [ ] Settings page
 
 #### Sprint 3.2: Remote Portal Mobile
-- [x] Touch-to-click coordinate mapping
-- [x] Pinch-to-zoom on remote screen
-- [x] Gesture-to-swipe forwarding
+- [ ] Touch-to-click coordinate mapping
+- [ ] Pinch-to-zoom on remote screen
+- [ ] Gesture-to-swipe forwarding
 
 #### Sprint 3.3: Communication Features
-- [x] Mirror F3 features from Windows app
-- [x] Push notification integration
-- [x] Background service for always-on connection
+- [ ] Mirror F3 features from Windows app
+- [ ] Push notification integration
+- [ ] Background service for always-on connection
 
 #### Sprint 3.4: Android-Specific
-- [x] Accessibility Service for local screen control
-- [x] Battery optimization exemption setup
-- [x] Companion app for device-to-device relay
+- [ ] Accessibility Service for local screen control
+- [ ] Battery optimization exemption setup
+- [ ] Companion app for device-to-device relay
 
 ---
 

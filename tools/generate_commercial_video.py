@@ -25,7 +25,7 @@ import edge_tts
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ASSETS_DIR = os.path.join(BASE_DIR, "marketing", "video_assets")
 OUTPUT_VIDEO = os.path.join(BASE_DIR, "marketing", "Pentactopus_Commercial_Demo.mp4")
-ARTIFACT_DIR = r"C:\Users\Sany\.gemini\antigravity-ide\brain\29170360-d82c-4b93-a452-a436cf4f02c9"
+ARTIFACT_DIR = r"C:\Users\Sany\.gemini\antigravity-ide\brain\465a4303-b5be-4691-9e73-d72152cc913c"
 FFMPEG = shutil.which("ffmpeg") or r"C:\Users\Sany\AppData\Local\Microsoft\WinGet\Links\ffmpeg.EXE"
 
 os.makedirs(ASSETS_DIR, exist_ok=True)
@@ -36,7 +36,7 @@ SCENES = [
         "id": "scene1_intro",
         "title": "PENTACTOPUS | Autonomous Computer-Use AI & Remote Mesh",
         "subtitle": "Next-Generation Autonomous Computer Control for Windows & Android",
-        "bg_image": os.path.join(ARTIFACT_DIR, "web_landing.png"),
+        "bg_image": os.path.join(BASE_DIR, "reports", "ui_screenshots", "web_landing.png"),
         "script": (
             "Welcome to Pentactopus — the next-generation autonomous computer-use AI and high-performance remote desktop mesh. "
             "Control your Windows PC from Android, automate complex desktop tasks, and deploy intelligent agents that see, act, and verify."
@@ -46,7 +46,7 @@ SCENES = [
         "id": "scene2_architecture",
         "title": "CORE ARCHITECTURE | Sub-10ms WebRTC & Perceptual Vision",
         "subtitle": "Sub-10ms Latency • Native Hardware Injection • Multi-Model Gateway",
-        "bg_image": os.path.join(ARTIFACT_DIR, "architecture_section_1789466062063.png"),
+        "bg_image": os.path.join(ARTIFACT_DIR, "full_page_capture_1789681826644.png"),
         "script": (
             "At the heart of Pentactopus is our sub-ten-millisecond WebRTC streaming mesh and autonomous cognitive vision engine. "
             "Our AI perceives UI elements pixel-by-pixel, plans multi-step workflows, and injects hardware events with zero perceptible latency."
@@ -56,7 +56,7 @@ SCENES = [
         "id": "scene3_installation",
         "title": "CROSS-PLATFORM INSTALLATION | Windows & Android Binaries",
         "subtitle": "Native Win32 Executables • Genuine APKs • Zero Heavy Runtimes",
-        "bg_image": os.path.join(ARTIFACT_DIR, "downloads_section_1789466210285.png"),
+        "bg_image": os.path.join(BASE_DIR, "reports", "ui_screenshots", "desktop_agent_ui.png"),
         "script": (
             "Deploying Pentactopus is completely seamless. Download lightweight native binaries for Windows and Android with zero bloated dependencies. "
             "On Windows, our installer configures your local command center in seconds, running local tasks with full hardware acceleration."
@@ -66,7 +66,7 @@ SCENES = [
         "id": "scene4_remote_control",
         "title": "BI-DIRECTIONAL MESH | Remote Viewport & AI Co-Pilot",
         "subtitle": "Phone-to-PC & PC-to-Phone • Touch Mapping • Autonomous Task Runner",
-        "bg_image": os.path.join(ARTIFACT_DIR, "web_user_dashboard.png"),
+        "bg_image": os.path.join(BASE_DIR, "reports", "ui_screenshots", "web_user_dashboard.png"),
         "script": (
             "Pairing remote nodes takes just seconds. Command your Windows desktop from your smartphone, or steer an Android fleet right from your workstation. "
             "Simply dispatch an objective, and your AI co-pilot executes it autonomously across the mesh."
@@ -76,7 +76,7 @@ SCENES = [
         "id": "scene5_pricing",
         "title": "TRANSPARENT UNIT ECONOMICS | Pricing & Subscription Plans",
         "subtitle": "Dynamic Cost Calculator • Free Starter • Pro at $12/month",
-        "bg_image": os.path.join(ARTIFACT_DIR, "economics_calculator_updated_1789466117107.png"),
+        "bg_image": os.path.join(ARTIFACT_DIR, "scrolled_view_1789681822204.png"),
         "script": (
             "We provide crystal-clear, transparent unit economics. Calculate exact token and bandwidth costs dynamically with our built-in slider. "
             "Get started free today, or upgrade to Pentactopus Pro for just twelve dollars a month for unlimited cloud relays and vision inference."
@@ -86,7 +86,7 @@ SCENES = [
         "id": "scene6_enterprise",
         "title": "ENTERPRISE READY | Custom Integrations & Governance",
         "subtitle": "RBAC Administration • Custom Agent Buses • Deploy at pentactopus.com",
-        "bg_image": os.path.join(ARTIFACT_DIR, "admin_dashboard.png"),
+        "bg_image": os.path.join(BASE_DIR, "reports", "ui_screenshots", "admin_dashboard.png"),
         "script": (
             "Need custom on-premise deployments, multi-agent organization buses, or bespoke enterprise integrations? "
             "Contact our engineering team today at contact at pentactopus dot com. "
