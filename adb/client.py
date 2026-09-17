@@ -79,14 +79,16 @@ class ADBClient:
     def run_command(self, subcommands: List[str], timeout_sec: int = 15) -> Tuple[int, str, str]:
         cmd = self._build_cmd(subcommands)
         try:
-            res = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                timeout=timeout_sec,
-                encoding="utf-8",
-                errors="replace"
-            )
+            kwargs = {
+                "capture_output": True,
+                "text": True,
+                "timeout": timeout_sec,
+                "encoding": "utf-8",
+                "errors": "replace"
+            }
+            if os.name == 'nt':
+                kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
+            res = subprocess.run(cmd, **kwargs)
             return res.returncode, res.stdout.strip(), res.stderr.strip()
         except subprocess.TimeoutExpired:
             raise ADBError(f"ADB command timed out after {timeout_sec}s: {' '.join(cmd)}")
@@ -96,11 +98,13 @@ class ADBClient:
     def run_binary_command(self, subcommands: List[str], timeout_sec: int = 15) -> bytes:
         cmd = self._build_cmd(subcommands)
         try:
-            res = subprocess.run(
-                cmd,
-                capture_output=True,
-                timeout=timeout_sec
-            )
+            kwargs = {
+                "capture_output": True,
+                "timeout": timeout_sec
+            }
+            if os.name == 'nt':
+                kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
+            res = subprocess.run(cmd, **kwargs)
             if res.returncode != 0:
                 raise ADBError(f"ADB binary command failed: {res.stderr.decode('utf-8', errors='replace')}")
             return res.stdout
