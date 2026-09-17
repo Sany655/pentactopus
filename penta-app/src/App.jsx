@@ -37,6 +37,16 @@ export default function App() {
   const videoRef = useRef(null);
   const chatEndRef = useRef(null);
   
+  // Mobile / Touch State
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [touchStartPos, setTouchStartPos] = useState(null);
+  
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+  
   // WebRTC State
   const [rtcConnectionState, setRtcConnectionState] = useState('disconnected');
   const peerConnection = useRef(null);
@@ -224,13 +234,38 @@ export default function App() {
     } catch (e) {}
   };
 
-  const handleViewportClick = async (e) => {
-    if (!viewportRef.current) return;
+  const handleViewportTouchStart = (e) => {
+    if (e.touches.length > 0) {
+      setTouchStartPos({ x: e.touches[0].clientX, y: e.touches[0].clientY });
+    }
+  };
+
+  const handleViewportTouchEnd = async (e) => {
+    if (!viewportRef.current || e.changedTouches.length === 0) return;
+    const touch = e.changedTouches[0];
     const rect = viewportRef.current.getBoundingClientRect();
-    const normX = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-    const normY = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
+    const normX = Math.max(0, Math.min(1, (touch.clientX - rect.left) / rect.width));
+    const normY = Math.max(0, Math.min(1, (touch.clientY - rect.top) / rect.height));
 
     const devId = selectedDevice === 'pc' ? 'pc_windows_host' : 'phone_android_node';
+
+    if (touchStartPos) {
+      const dx = touch.clientX - touchStartPos.x;
+      const dy = touch.clientY - touchStartPos.y;
+      if (Math.abs(dx) > 30 || Math.abs(dy) > 30) {
+        // Swipe gesture detected
+        try {
+          await fetch(`${serverUrl}/api/device/${devId}/action`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
+            body: JSON.stringify({ type: 'swipe', dx, dy })
+          });
+        } catch (err) {}
+        setTouchStartPos(null);
+        return;
+      }
+    }
+    setTouchStartPos(null);
 
     try {
       const isLocal = isLocalServer();
@@ -240,7 +275,7 @@ export default function App() {
 
       await fetch(endpoint, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
         body: JSON.stringify({
           action: selectedDevice === 'pc' ? 'click' : 'tap',
           type: selectedDevice === 'pc' ? 'click' : 'tap',
@@ -249,7 +284,7 @@ export default function App() {
         })
       });
     } catch (err) {
-      console.warn("Click failed", err);
+      console.warn("Touch failed", err);
     }
   };
 
@@ -395,8 +430,8 @@ export default function App() {
   );
 
   const renderChat = () => (
-    <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
-      <div style={{ width: '260px', background: '#0e0e11', borderRight: '1px solid #27272a', display: 'flex', flexDirection: 'column', padding: '16px' }}>
+    <div style={{ flex: 1, display: 'flex', overflow: 'hidden', flexDirection: isMobile ? 'column' : 'row' }}>
+      <div style={{ width: isMobile ? '100%' : '260px', height: isMobile ? '140px' : 'auto', background: '#0e0e11', borderRight: isMobile ? 'none' : '1px solid #27272a', borderBottom: isMobile ? '1px solid #27272a' : 'none', display: 'flex', flexDirection: 'column', padding: '16px', boxSizing: 'border-box', flexShrink: 0 }}>
         <button style={{ ...styles.button, background: 'transparent', border: '1px solid #3f3f46', marginBottom: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', color: '#e4e4e7' }}>
           <span style={{ fontSize: '16px', fontWeight: 'bold' }}>+</span> New Chat
         </button>
@@ -539,7 +574,13 @@ export default function App() {
         </div>
       </div>
       
-      <div ref={viewportRef} onClick={handleViewportClick} style={styles.canvasWrapper}>
+      <div 
+        ref={viewportRef} 
+        onClick={handleViewportTouchEnd} // Unified click/touch logic
+        onTouchStart={handleViewportTouchStart}
+        onTouchEnd={handleViewportTouchEnd}
+        style={{...styles.canvasWrapper, touchAction: 'none'}}
+      >
         <video 
           ref={videoRef}
           autoPlay 

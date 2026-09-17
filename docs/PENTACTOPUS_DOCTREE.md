@@ -346,24 +346,24 @@ pentactopus/                         # Project Root
 ### 📱 Phase 3: ANDROID APP (Tauri v2)
 
 #### Sprint 3.1: Core App Port
-- [ ] Login page adapted for mobile UX
-- [ ] Agent chat page with touch-optimized input
-- [ ] Settings page
+- [x] Login page adapted for mobile UX
+- [x] Agent chat page with touch-optimized input
+- [x] Settings page
 
 #### Sprint 3.2: Remote Portal Mobile
-- [ ] Touch-to-click coordinate mapping
-- [ ] Pinch-to-zoom on remote screen
-- [ ] Gesture-to-swipe forwarding
+- [x] Touch-to-click coordinate mapping
+- [x] Pinch-to-zoom on remote screen
+- [x] Gesture-to-swipe forwarding
 
 #### Sprint 3.3: Communication Features
-- [ ] Mirror F3 features from Windows app
-- [ ] Push notification integration
-- [ ] Background service for always-on connection
+- [x] Mirror F3 features from Windows app
+- [x] Push notification integration
+- [x] Background service for always-on connection
 
 #### Sprint 3.4: Android-Specific
-- [ ] Accessibility Service for local screen control
-- [ ] Battery optimization exemption setup
-- [ ] Companion app for device-to-device relay
+- [x] Accessibility Service for local screen control
+- [x] Battery optimization exemption setup
+- [x] Companion app for device-to-device relay
 
 ---
 
