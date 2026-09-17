@@ -113,6 +113,16 @@ jobs:
         env:
           ANDROID_NDK_ROOT: ${{ env.ANDROID_NDK_ROOT }}
 
+      - name: Inject Dummy Sidecars for Android
+        working-directory: ./penta-app
+        run: |
+          mkdir -p src-tauri/binaries
+          touch src-tauri/binaries/penta_daemon-aarch64-linux-android
+          touch src-tauri/binaries/penta_daemon-armv7-linux-androideabi
+          touch src-tauri/binaries/penta_daemon-i686-linux-android
+          touch src-tauri/binaries/penta_daemon-x86_64-linux-android
+          chmod +x src-tauri/binaries/*
+
       - name: Build Android APK
         working-directory: ./penta-app
         run: cargo tauri android build --apk

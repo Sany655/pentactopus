@@ -23,6 +23,11 @@ export default function App() {
   ]);
   const [isExecuting, setIsExecuting] = useState(false);
   
+  // New States
+  const [llmProvider, setLlmProvider] = useState('openai');
+  const [apiKey, setApiKey] = useState('');
+  const [visionQuality, setVisionQuality] = useState('high');
+  
   // Viewport State
   const [selectedDevice, setSelectedDevice] = useState('pc');
   const [frameTimestamp, setFrameTimestamp] = useState(Date.now());
@@ -234,6 +239,30 @@ export default function App() {
                 🖥️ Host this device
               </div>
               <div 
+                style={styles.dropdownItem} 
+                onMouseEnter={e => e.target.style.background = '#27272a'} 
+                onMouseLeave={e => e.target.style.background = 'transparent'}
+                onClick={() => { setCurrentView('model_config'); setMenuOpen(false); }}
+              >
+                🧠 Model Configuration
+              </div>
+              <div 
+                style={styles.dropdownItem} 
+                onMouseEnter={e => e.target.style.background = '#27272a'} 
+                onMouseLeave={e => e.target.style.background = 'transparent'}
+                onClick={() => { setCurrentView('subscription'); setMenuOpen(false); }}
+              >
+                💳 Subscription Plan
+              </div>
+              <div 
+                style={styles.dropdownItem} 
+                onMouseEnter={e => e.target.style.background = '#27272a'} 
+                onMouseLeave={e => e.target.style.background = 'transparent'}
+                onClick={() => { setCurrentView('settings'); setMenuOpen(false); }}
+              >
+                ⚙️ Settings
+              </div>
+              <div 
                 style={{ ...styles.dropdownItem, color: '#ef4444', borderBottom: 'none' }} 
                 onMouseEnter={e => e.target.style.background = 'rgba(239, 68, 68, 0.1)'} 
                 onMouseLeave={e => e.target.style.background = 'transparent'}
@@ -386,6 +415,82 @@ export default function App() {
     </div>
   );
 
+  const renderModelConfig = () => (
+    <div style={styles.loginContainer}>
+      <div style={{...styles.loginCard, width: '420px'}}>
+        <h2 style={{ margin: '0 0 8px 0', fontSize: '20px' }}>Model Configuration</h2>
+        <p style={{ color: '#a1a1aa', fontSize: '14px', marginBottom: '24px' }}>Configure your local or cloud LLM provider for autonomous AI capabilities.</p>
+        
+        <label style={{display: 'block', marginBottom: '8px', fontSize: '13px', color: '#e4e4e7'}}>AI Provider</label>
+        <select 
+          style={{...styles.input, WebkitAppearance: 'none'}} 
+          value={llmProvider} 
+          onChange={e => setLlmProvider(e.target.value)}
+        >
+          <option value="openai">OpenAI (GPT-4o)</option>
+          <option value="anthropic">Anthropic (Claude 3.5 Sonnet)</option>
+          <option value="groq">Groq (Llama 3)</option>
+          <option value="ollama">Ollama (Local Inference)</option>
+        </select>
+        
+        <label style={{display: 'block', marginBottom: '8px', fontSize: '13px', color: '#e4e4e7'}}>API Key</label>
+        <input 
+          style={styles.input} 
+          type="password" 
+          placeholder={`Enter your ${llmProvider} API key...`} 
+          value={apiKey} 
+          onChange={e => setApiKey(e.target.value)} 
+        />
+        
+        <button style={styles.button} onClick={() => setCurrentView('chat')}>Save Configuration</button>
+      </div>
+    </div>
+  );
+
+  const renderSubscription = () => (
+    <div style={styles.loginContainer}>
+      <div style={{...styles.loginCard, width: '420px'}}>
+        <h2 style={{ margin: '0 0 8px 0', fontSize: '20px' }}>Subscription Plan</h2>
+        <p style={{ color: '#a1a1aa', fontSize: '14px', marginBottom: '24px' }}>Manage your Pentactopus tier and usage.</p>
+        
+        <div style={{ background: '#18181b', border: '1px solid #3b82f6', padding: '24px', borderRadius: '12px', marginBottom: '24px' }}>
+          <div style={{ fontSize: '12px', color: '#60a5fa', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 'bold' }}>Current Plan</div>
+          <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#fff' }}>{userPlan === 'free' ? 'Free Starter' : 'PRO Tier'}</div>
+          <p style={{color: '#a1a1aa', fontSize: '13px', margin: '8px 0 0 0'}}>
+            {userPlan === 'free' ? 'Limited to 1 device and local network mesh.' : 'Unlimited P2P WebRTC mesh with 5 devices.'}
+          </p>
+        </div>
+        
+        {userPlan === 'free' && (
+          <button style={{...styles.button, background: '#10b981', marginBottom: '12px'}}>Upgrade to PRO ($12/mo)</button>
+        )}
+        <button style={{...styles.button, background: '#27272a', color: '#fff'}} onClick={() => setCurrentView('chat')}>Back to Dashboard</button>
+      </div>
+    </div>
+  );
+
+  const renderSettings = () => (
+    <div style={styles.loginContainer}>
+      <div style={{...styles.loginCard, width: '420px'}}>
+        <h2 style={{ margin: '0 0 8px 0', fontSize: '20px' }}>App Settings</h2>
+        <p style={{ color: '#a1a1aa', fontSize: '14px', marginBottom: '24px' }}>General application preferences.</p>
+        
+        <label style={{display: 'block', marginBottom: '8px', fontSize: '13px', color: '#e4e4e7'}}>Remote Viewport Quality</label>
+        <select 
+          style={{...styles.input, WebkitAppearance: 'none', marginBottom: '24px'}} 
+          value={visionQuality} 
+          onChange={e => setVisionQuality(e.target.value)}
+        >
+          <option value="high">High (1080p, 60fps)</option>
+          <option value="medium">Medium (720p, 30fps)</option>
+          <option value="low">Low (480p, Low Latency)</option>
+        </select>
+        
+        <button style={styles.button} onClick={() => setCurrentView('chat')}>Save Settings</button>
+      </div>
+    </div>
+  );
+
   return (
     <div style={styles.app}>
       <style>
@@ -409,6 +514,9 @@ export default function App() {
       {currentView === 'connect' && renderConnect()}
       {currentView === 'host_setup' && renderHostSetup()}
       {currentView === 'anydesk' && renderAnydesk()}
+      {currentView === 'model_config' && renderModelConfig()}
+      {currentView === 'subscription' && renderSubscription()}
+      {currentView === 'settings' && renderSettings()}
     </div>
   );
 }
