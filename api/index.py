@@ -199,12 +199,22 @@ class handler(BaseHTTPRequestHandler):
             return
 
         if path == "/api/devices":
+            auth_header = self.headers.get("Authorization", "")
+            if not UserStore.validate_session(auth_header):
+                self._send_cors(401)
+                self.wfile.write(json.dumps({"error": "Unauthorized"}).encode("utf-8"))
+                return
             devices = DeviceHub.get_active_devices()
             self._send_cors(200)
             self.wfile.write(json.dumps({"devices": devices}).encode("utf-8"))
             return
 
         if path.startswith("/api/device/") and path.endswith("/frame"):
+            auth_header = self.headers.get("Authorization", "")
+            if not UserStore.validate_session(auth_header):
+                self._send_cors(401)
+                self.wfile.write(json.dumps({"error": "Unauthorized"}).encode("utf-8"))
+                return
             parts = path.split("/")
             if len(parts) >= 4:
                 dev_id = parts[3]
@@ -219,6 +229,11 @@ class handler(BaseHTTPRequestHandler):
                     return
 
         if path.startswith("/api/device/") and path.endswith("/tasks"):
+            auth_header = self.headers.get("Authorization", "")
+            if not UserStore.validate_session(auth_header):
+                self._send_cors(401)
+                self.wfile.write(json.dumps({"error": "Unauthorized"}).encode("utf-8"))
+                return
             parts = path.split("/")
             if len(parts) >= 4:
                 dev_id = parts[3]
@@ -239,6 +254,11 @@ class handler(BaseHTTPRequestHandler):
 
         # Frame upload
         if path.startswith("/api/device/") and path.endswith("/frame"):
+            auth_header = self.headers.get("Authorization", "")
+            if not UserStore.validate_session(auth_header):
+                self._send_cors(401)
+                self.wfile.write(json.dumps({"error": "Unauthorized"}).encode("utf-8"))
+                return
             parts = path.split("/")
             if len(parts) >= 4:
                 dev_id = parts[3]
@@ -299,10 +319,22 @@ class handler(BaseHTTPRequestHandler):
             self.wfile.write(json.dumps({"success": True, "message": "Session invalidated"}).encode("utf-8"))
             return
 
+        if path == "/api/auth/guest":
+            user_data = UserStore._get_seed_users()["guest@pentactopus.com"]
+            token = UserStore.create_session("guest@pentactopus.com")
+            self._send_cors(200)
+            self.wfile.write(json.dumps({"success": True, "user": UserStore.safe_user(user_data), "token": token}).encode("utf-8"))
+            return
+
         # ----------------------------------------------------------------------
         # Device Mesh & Remote Control
         # ----------------------------------------------------------------------
         if path == "/api/device/register":
+            auth_header = self.headers.get("Authorization", "")
+            if not UserStore.validate_session(auth_header):
+                self._send_cors(401)
+                self.wfile.write(json.dumps({"error": "Unauthorized"}).encode("utf-8"))
+                return
             dev = DeviceHub.register_device(
                 device_id=data.get("device_id", "unknown"),
                 name=data.get("name", "Device"),
@@ -316,6 +348,11 @@ class handler(BaseHTTPRequestHandler):
             return
 
         if path.startswith("/api/device/") and path.endswith("/action"):
+            auth_header = self.headers.get("Authorization", "")
+            if not UserStore.validate_session(auth_header):
+                self._send_cors(401)
+                self.wfile.write(json.dumps({"error": "Unauthorized"}).encode("utf-8"))
+                return
             parts = path.split("/")
             if len(parts) >= 4:
                 dev_id = parts[3]
@@ -330,6 +367,20 @@ class handler(BaseHTTPRequestHandler):
             return
 
         if path in ("/api/agent/dispatch", "/api/organization/dispatch"):
+            auth_header = self.headers.get("Authorization", "")
+            user = UserStore.validate_session(auth_header)
+            if not user:
+                self._send_cors(401)
+                self.wfile.write(json.dumps({"error": "Unauthorized"}).encode("utf-8"))
+                return
+            
+            try:
+                UserStore.track_usage(user["email"], "ai_tasks", 1)
+            except AuthError as e:
+                self._send_cors(403)
+                self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
+                return
+
             goal = data.get("goal") or data.get("objective", "")
             dev_id = data.get("device_id", "pc_windows_host")
             task_id = DeviceHub.queue_action(dev_id, {

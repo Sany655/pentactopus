@@ -199,6 +199,8 @@ class BillingManager:
             except Exception as e:
                 return {"success": False, "error": str(e)}
         else:
+            if os.getenv("VERCEL_ENV") == "production":
+                return {"success": False, "error": "Webhook secret missing in production. Refusing unverified payload."}
             try:
                 event = json.loads(payload.decode("utf-8"))
             except Exception:

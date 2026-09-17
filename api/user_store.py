@@ -101,7 +101,8 @@ class UserStore:
                 "license_key": "PENTA-ADMIN-MASTER-001",
                 "expires_at": time.time() + (3650 * 86400),
                 "created_at": time.time(),
-                "paired_devices": ["workstation-core", "pixel-9-pro"]
+                "paired_devices": ["workstation-core", "pixel-9-pro"],
+                "usage": {"ai_tasks": 0, "last_reset": time.time()}
             },
             "alex@pentactopus.com": {
                 "id": "usr_alex_pro",
@@ -113,7 +114,8 @@ class UserStore:
                 "license_key": "PENTA-PRO-2026-X7K",
                 "expires_at": time.time() + (365 * 86400),
                 "created_at": time.time() - 86400 * 10,
-                "paired_devices": ["dell-xps-15", "galaxy-s24-ultra"]
+                "paired_devices": ["dell-xps-15", "galaxy-s24-ultra"],
+                "usage": {"ai_tasks": 0, "last_reset": time.time()}
             },
             "guest@pentactopus.com": {
                 "id": "usr_guest_free",
@@ -125,7 +127,8 @@ class UserStore:
                 "license_key": None,
                 "expires_at": None,
                 "created_at": time.time() - 86400 * 2,
-                "paired_devices": ["laptop-surface"]
+                "paired_devices": ["laptop-surface"],
+                "usage": {"ai_tasks": 0, "last_reset": time.time()}
             }
         }
 
@@ -269,7 +272,8 @@ class UserStore:
             "license_key": None,
             "expires_at": None,
             "created_at": time.time(),
-            "paired_devices": []
+            "paired_devices": [],
+            "usage": {"ai_tasks": 0, "last_reset": time.time()}
         }
         users[email] = new_user
         cls._save_users(users)
@@ -484,3 +488,36 @@ class UserStore:
         users[email] = user
         cls._save_users(users)
         return cls.safe_user(user)
+
+    @classmethod
+    def track_usage(cls, email: str, metric: str = "ai_tasks", amount: int = 1) -> bool:
+        """Increment usage metric and verify if it exceeds plan limits."""
+        users = cls._load_users()
+        user = users.get(email)
+        if not user:
+            return False
+
+        usage = user.get("usage", {"ai_tasks": 0, "last_reset": time.time()})
+        now = time.time()
+
+        # Monthly reset
+        if now - usage.get("last_reset", 0) > 30 * 86400:
+            usage["ai_tasks"] = 0
+            usage["last_reset"] = now
+
+        plan = user.get("plan", "free")
+        limits = {
+            "free": 15,          # 15 tasks/month for free
+            "pro": 2000,         # 2000 tasks/month for pro
+            "enterprise": 100000 # Unlimited
+        }
+        
+        limit = limits.get(plan, 15)
+        if usage.get(metric, 0) + amount > limit:
+            raise AuthError(f"Plan limit exceeded for {metric}. Please upgrade your plan.")
+
+        usage[metric] = usage.get(metric, 0) + amount
+        user["usage"] = usage
+        users[email] = user
+        cls._save_users(users)
+        return True
