@@ -2,8 +2,6 @@ name: Build and Release Native Client Apps
 
 on:
   push:
-    branches:
-      - main
     tags:
       - 'v*'
   workflow_dispatch:
