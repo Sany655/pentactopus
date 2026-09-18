@@ -550,9 +550,10 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
         goal = data.get("goal", "Show PC desktop")
         provider = data.get("provider") or os.environ.get("MODEL_PROVIDER", "gemini")
         model_name = data.get("model") or os.environ.get("MODEL_NAME", "gemini-2.5-flash")
+        api_key = data.get("api_key") or os.environ.get("MODEL_API_KEY")
         dry_run = data.get("dry_run", False)
         try:
-            m = get_model_provider(provider, model_name=model_name)
+            m = get_model_provider(provider, model_name=model_name, api_key=api_key, enable_fallback=not bool(api_key))
             agent = PCAgent(model_provider=m, dry_run=dry_run)
             res = agent.run_goal(goal)
             steps_log = []

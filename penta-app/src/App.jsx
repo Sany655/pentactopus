@@ -140,7 +140,7 @@ export default function App() {
       const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'goal', type: 'goal', goal: goalText })
+        body: JSON.stringify({ action: 'goal', type: 'goal', goal: goalText, provider: llmProvider, api_key: apiKey })
       });
       const data = await res.json();
       

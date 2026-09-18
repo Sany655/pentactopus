@@ -398,7 +398,9 @@ class handler(BaseHTTPRequestHandler):
             dev_id = data.get("device_id", "pc_windows_host")
             task_id = DeviceHub.queue_action(dev_id, {
                 "type": "goal",
-                "goal": goal
+                "goal": goal,
+                "provider": data.get("provider"),
+                "api_key": data.get("api_key")
             })
             self._send_cors(200)
             self.wfile.write(json.dumps({
