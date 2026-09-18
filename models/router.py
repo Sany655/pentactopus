@@ -123,9 +123,6 @@ def get_model_provider(
 
     # Construct safe fallbacks (e.g. fallback to mock or secondary key)
     fallbacks = []
-    # Always include mock as ultimate graceful failsafe
-    if name != "mock":
-        fallbacks.append(MockModelProvider("mock-v1"))
 
     return UnifiedFallbackProvider(primary=primary, fallbacks=fallbacks)
 

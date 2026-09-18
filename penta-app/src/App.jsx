@@ -157,10 +157,10 @@ export default function App() {
           } catch (e) {}
           setChatHistory(prev => [...prev, { sender: 'agent', text: aiText }]);
         } else {
-          setChatHistory(prev => [...prev, { sender: 'agent', text: `Action Task Queued (${data.task_id}). Awaiting local daemon perception step.` }]);
+          setChatHistory(prev => [...prev, { sender: 'agent', text: data.message || `Mission dispatched. Task ID: ${data.task_id}` }]);
         }
       } else {
-        setChatHistory(prev => [...prev, { sender: 'agent', text: `Error: ${data.error || 'Failed to dispatch mission'}` }]);
+        setChatHistory(prev => [...prev, { sender: 'agent', text: `Error: ${data.error || data.message || 'Failed to dispatch mission'}` }]);
       }
     } catch (err) {
       setChatHistory(prev => [...prev, { sender: 'agent', text: `[LOCAL EMULATION] Dispatched directive locally.` }]);
