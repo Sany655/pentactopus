@@ -30,6 +30,7 @@ Allowed actions:
 - {"action": "hotkey", "key": "ENTER" | "ESC" | "WIN_D" | "TAB" | "SPACE" | "VOL_UP" | "VOL_DOWN" | "MUTE" | "PLAY_PAUSE"}
 - {"action": "launch_app", "app": "chrome" | "notepad" | "calc" | "explorer" | "terminal"}
 - {"action": "open_url", "url": "https://youtube.com"}
+- {"action": "run_command", "command": "npm run build"}
 - {"action": "wait", "seconds": 2}
 - {"action": "finish", "status": "success", "message": "Goal accomplished on PC"}
 
@@ -129,6 +130,11 @@ class PCAgent:
             url = action_data.get("url", "")
             if url:
                 self.controller.open_url(url)
+        elif act == "run_command":
+            cmd = action_data.get("command", "")
+            if cmd:
+                res = self.controller.run_command(cmd)
+                logger.info(f"[PC AGENT] Command result: {res}")
         elif act == "wait":
             secs = min(5, action_data.get("seconds", 1))
             time.sleep(secs)

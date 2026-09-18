@@ -265,3 +265,12 @@ class DesktopController:
         x = max(0, min(w - 1, x))
         y = max(0, min(h - 1, y))
         return x, y
+
+    def run_command(self, command: str) -> Dict[str, Any]:
+        """Execute a shell command natively and capture output."""
+        try:
+            res = subprocess.run(command, shell=True, capture_output=True, text=True, timeout=30)
+            output = res.stdout + "\n" + res.stderr
+            return {"success": res.returncode == 0, "output": output.strip()}
+        except Exception as e:
+            return {"success": False, "error": str(e)}

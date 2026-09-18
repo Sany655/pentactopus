@@ -64,13 +64,18 @@ export default function App() {
       startWebRTCSession();
       const interval = setInterval(() => {
         setFrameTimestamp(Date.now());
-      }, 1500);
+      }, 500);
       return () => {
         clearInterval(interval);
         stopWebRTCSession();
       };
+    } else if (currentView === 'host_setup') {
+      startHostWebRTCSession();
+      return () => {
+        stopWebRTCSession();
+      };
     }
-  }, [currentView]);
+  }, [currentView, targetCode]);
 
   useEffect(() => {
     if (chatEndRef.current) {
@@ -224,6 +229,79 @@ export default function App() {
       });
     } catch (e) {
       console.warn("Signaling failed:", e);
+    }
+  };
+
+  const sendHostWebRTCSignal = async (client_id, type, payload) => {
+    try {
+      await fetch(`${serverUrl}/api/webrtc/signal`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
+        body: JSON.stringify({ target_id: client_id, sender_id: deviceCode, type, payload })
+      });
+    } catch (e) {}
+  };
+
+  const startHostWebRTCSession = async () => {
+    webrtcPollInterval.current = setInterval(async () => {
+      try {
+        const res = await fetch(`${serverUrl}/api/webrtc/poll?target_id=${deviceCode}`, {
+          headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+        const data = await res.json();
+        if (data.signals && data.signals.length > 0) {
+          for (const sig of data.signals) {
+            if (sig.type === 'offer' && !peerConnection.current) {
+              clearInterval(webrtcPollInterval.current);
+              acceptOffer(sig.sender, sig.payload);
+              break;
+            } else if (sig.type === 'ice' && peerConnection.current) {
+              await peerConnection.current.addIceCandidate(new RTCIceCandidate(sig.payload));
+            }
+          }
+        }
+      } catch (e) {}
+    }, 2000);
+  };
+
+  const acceptOffer = async (client_id, offerPayload) => {
+    try {
+      const configuration = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
+      const pc = new RTCPeerConnection(configuration);
+      peerConnection.current = pc;
+      
+      pc.onicecandidate = async (event) => {
+        if (event.candidate) {
+          await sendHostWebRTCSignal(client_id, 'ice', event.candidate);
+        }
+      };
+
+      const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
+      stream.getTracks().forEach(track => pc.addTrack(track, stream));
+
+      await pc.setRemoteDescription(new RTCSessionDescription(offerPayload));
+      const answer = await pc.createAnswer();
+      await pc.setLocalDescription(answer);
+      
+      await sendHostWebRTCSignal(client_id, 'answer', answer);
+      
+      webrtcPollInterval.current = setInterval(async () => {
+        try {
+          const res = await fetch(`${serverUrl}/api/webrtc/poll?target_id=${deviceCode}`, {
+            headers: { 'Authorization': `Bearer ${authToken}` }
+          });
+          const data = await res.json();
+          if (data.signals) {
+            for (const sig of data.signals) {
+              if (sig.sender === client_id && sig.type === 'ice') {
+                await pc.addIceCandidate(new RTCIceCandidate(sig.payload));
+              }
+            }
+          }
+        } catch (e) {}
+      }, 2000);
+    } catch (e) {
+      console.warn("Failed to accept offer", e);
     }
   };
 
@@ -605,7 +683,7 @@ export default function App() {
           style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'contain', zIndex: rtcConnectionState === 'connected' ? 2 : 0 }} 
         />
         <img 
-          src={`${serverUrl}${selectedDevice === 'pc' ? '/api/pc/screen' : '/api/screenshot'}?t=${frameTimestamp}`} 
+          src={isLocalServer() ? `${serverUrl}${selectedDevice === 'pc' ? '/api/pc/screen' : '/api/screenshot'}?t=${frameTimestamp}` : `${serverUrl}/api/device/${targetCode || (selectedDevice === 'pc' ? 'pc_windows_host' : 'phone_android_node')}/frame?t=${frameTimestamp}`}
           alt="Remote Viewport Fallback" 
           onError={(e) => { e.target.src = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='300' viewBox='0 0 400 300'><rect width='100%' height='100%' fill='%23121215'/><text x='50%' y='50%' fill='%2371717a' font-family='sans-serif' font-size='14' text-anchor='middle'>Awaiting Remote Display Buffer...</text></svg>"; }}
           style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', cursor: 'crosshair', userSelect: 'none', position: 'relative', zIndex: 1 }} 
