@@ -30,6 +30,13 @@ export default function App() {
   const [apiKey, setApiKey] = useState(localStorage.getItem('penta_api_key') || '');
   const [visionQuality, setVisionQuality] = useState('high');
   
+  // Support & FAQ State
+  const [supportName, setSupportName] = useState('');
+  const [supportEmail, setSupportEmail] = useState('');
+  const [supportMessage, setSupportMessage] = useState('');
+  const [supportStatus, setSupportStatus] = useState('');
+  const [expandedFaq, setExpandedFaq] = useState(null);
+  
   // Viewport State
   const [selectedDevice, setSelectedDevice] = useState('pc');
   const [frameTimestamp, setFrameTimestamp] = useState(Date.now());
@@ -485,6 +492,14 @@ export default function App() {
                 ⚙️ Settings
               </div>
               <div 
+                style={styles.dropdownItem} 
+                onMouseEnter={e => e.target.style.background = '#27272a'} 
+                onMouseLeave={e => e.target.style.background = 'transparent'}
+                onClick={() => { setCurrentView('support'); setMenuOpen(false); }}
+              >
+                ❓ Support & FAQ
+              </div>
+              <div 
                 style={{ ...styles.dropdownItem, color: '#ef4444', borderBottom: 'none' }} 
                 onMouseEnter={e => e.target.style.background = 'rgba(239, 68, 68, 0.1)'} 
                 onMouseLeave={e => e.target.style.background = 'transparent'}
@@ -778,6 +793,92 @@ export default function App() {
     </div>
   );
 
+  const handleSupportSubmit = async (e) => {
+    e.preventDefault();
+    if (!supportName || !supportEmail || !supportMessage) {
+      setSupportStatus('Please fill all fields.');
+      return;
+    }
+    setSupportStatus('Sending...');
+    try {
+      const res = await fetch(`${serverUrl}/api/support/submit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: supportName, email: supportEmail, message: supportMessage })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setSupportStatus('Message sent successfully! We will get back to you soon.');
+        setSupportName('');
+        setSupportEmail('');
+        setSupportMessage('');
+      } else {
+        setSupportStatus(`Error: ${data.error || 'Failed to send message.'}`);
+      }
+    } catch (err) {
+      setSupportStatus('Error connecting to server.');
+    }
+    setTimeout(() => setSupportStatus(''), 5000);
+  };
+
+  const faqs = [
+    { q: 'How does the AI agent connect to my device?', a: 'It uses WebRTC to establish a secure peer-to-peer connection for streaming screen data and input actions.' },
+    { q: 'Is my data secure?', a: 'Yes, all actions and screen streams are transmitted securely over WebRTC with encryption.' },
+    { q: 'Can I use this on mobile?', a: 'Yes, Pentactopus supports both PC (Windows) and Android mobile nodes.' },
+    { q: 'What is the limit on the Free plan?', a: 'The free plan allows connection to 1 device on a local network mesh.' }
+  ];
+
+  const renderSupport = () => (
+    <div style={{...styles.loginContainer, alignItems: 'flex-start', paddingTop: '40px', overflowY: 'auto'}}>
+      <div style={{...styles.loginCard, width: '600px', maxWidth: '90%'}}>
+        <h2 style={{ margin: '0 0 8px 0', fontSize: '24px', fontWeight: '600' }}>Support & FAQ</h2>
+        <p style={{ color: '#a1a1aa', fontSize: '14px', marginBottom: '32px' }}>Find answers to common questions or contact our support team.</p>
+        
+        <div style={{ marginBottom: '32px' }}>
+          <h3 style={{ fontSize: '18px', marginBottom: '16px', color: '#fff' }}>Frequently Asked Questions</h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {faqs.map((faq, idx) => (
+              <div key={idx} style={{ background: '#18181b', borderRadius: '8px', border: '1px solid #27272a', overflow: 'hidden' }}>
+                <button 
+                  style={{ width: '100%', padding: '16px', background: 'transparent', border: 'none', color: '#e4e4e7', fontSize: '15px', fontWeight: '500', textAlign: 'left', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                  onClick={() => setExpandedFaq(expandedFaq === idx ? null : idx)}
+                >
+                  {faq.q}
+                  <span style={{ color: '#a1a1aa' }}>{expandedFaq === idx ? '−' : '+'}</span>
+                </button>
+                {expandedFaq === idx && (
+                  <div style={{ padding: '0 16px 16px 16px', color: '#a1a1aa', fontSize: '14px', lineHeight: '1.5' }}>
+                    {faq.a}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <h3 style={{ fontSize: '18px', marginBottom: '16px', color: '#fff' }}>Contact Us / Report an Issue</h3>
+          {supportStatus && (
+            <div style={{ background: supportStatus.includes('success') ? 'rgba(16, 185, 129, 0.1)' : supportStatus.includes('Sending') ? 'rgba(59, 130, 246, 0.1)' : 'rgba(239, 68, 68, 0.1)', color: supportStatus.includes('success') ? '#10b981' : supportStatus.includes('Sending') ? '#60a5fa' : '#ef4444', padding: '12px', borderRadius: '8px', fontSize: '14px', marginBottom: '16px', border: `1px solid ${supportStatus.includes('success') ? 'rgba(16, 185, 129, 0.2)' : supportStatus.includes('Sending') ? 'rgba(59, 130, 246, 0.2)' : 'rgba(239, 68, 68, 0.2)'}` }}>
+              {supportStatus}
+            </div>
+          )}
+          <form onSubmit={handleSupportSubmit}>
+            <input style={styles.input} type="text" placeholder="Your Name" value={supportName} onChange={e => setSupportName(e.target.value)} />
+            <input style={styles.input} type="email" placeholder="Your Email" value={supportEmail} onChange={e => setSupportEmail(e.target.value)} />
+            <textarea 
+              style={{...styles.input, height: '120px', resize: 'vertical', fontFamily: 'inherit'}} 
+              placeholder="How can we help you? Describe your issue, suggestion or question..." 
+              value={supportMessage} 
+              onChange={e => setSupportMessage(e.target.value)} 
+            />
+            <button style={{...styles.button, padding: '14px', fontSize: '15px'}} type="submit">Submit Request</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  );
+
   const renderSettings = () => (
     <div style={styles.loginContainer}>
       <div style={{...styles.loginCard, width: '420px'}}>
@@ -827,6 +928,7 @@ export default function App() {
       {currentView === 'subscription' && renderSubscription()}
       {currentView === 'usage' && renderUsageHistory()}
       {currentView === 'settings' && renderSettings()}
+      {currentView === 'support' && renderSupport()}
     </div>
   );
 }

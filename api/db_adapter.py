@@ -104,6 +104,16 @@ class DatabaseAdapter:
                         expires_at DOUBLE PRECISION,
                         active BOOLEAN NOT NULL DEFAULT true
                     );
+
+                    CREATE TABLE IF NOT EXISTS penta_support_tickets (
+                        id TEXT PRIMARY KEY,
+                        name TEXT NOT NULL,
+                        email TEXT NOT NULL,
+                        message TEXT NOT NULL,
+                        status TEXT NOT NULL DEFAULT 'open',
+                        created_at DOUBLE PRECISION NOT NULL,
+                        resolved_at DOUBLE PRECISION
+                    );
                 """)
             cls._initialized = True
             conn.close()
@@ -259,3 +269,84 @@ class DatabaseAdapter:
             logger.error(f"Failed to delete session: {e}")
             conn.close()
             return False
+
+    # -------------------------------------------------------------------------
+    # Support Tickets Repository
+    # -------------------------------------------------------------------------
+    @classmethod
+    def load_support_tickets(cls) -> Optional[Dict[str, Dict[str, Any]]]:
+        if not cls.is_postgres_configured():
+            return None
+        cls.init_schema()
+        conn = cls._get_connection()
+        if not conn:
+            return None
+
+        try:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("SELECT * FROM penta_support_tickets ORDER BY created_at DESC")
+                rows = cur.fetchall()
+                tickets = {r["id"]: dict(r) for r in rows}
+                conn.close()
+                return tickets
+        except Exception as e:
+            logger.error(f"Failed to load support tickets from DB: {e}")
+            conn.close()
+            return None
+
+    @classmethod
+    def save_support_ticket(cls, ticket: Dict[str, Any]) -> bool:
+        if not cls.is_postgres_configured():
+            return False
+        cls.init_schema()
+        conn = cls._get_connection()
+        if not conn:
+            return False
+
+        try:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    INSERT INTO penta_support_tickets (id, name, email, message, status, created_at, resolved_at)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    ON CONFLICT (id) DO UPDATE SET
+                        status = EXCLUDED.status,
+                        resolved_at = EXCLUDED.resolved_at;
+                """, (
+                    ticket["id"],
+                    ticket["name"],
+                    ticket["email"],
+                    ticket["message"],
+                    ticket.get("status", "open"),
+                    ticket.get("created_at", time.time()),
+                    ticket.get("resolved_at")
+                ))
+            conn.close()
+            return True
+        except Exception as e:
+            logger.error(f"Failed to save support ticket to DB: {e}")
+            conn.close()
+            return False
+
+    @classmethod
+    def update_support_ticket_status(cls, ticket_id: str, status: str, resolved_at: Optional[float] = None) -> bool:
+        if not cls.is_postgres_configured():
+            return False
+        cls.init_schema()
+        conn = cls._get_connection()
+        if not conn:
+            return False
+
+        try:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    UPDATE penta_support_tickets
+                    SET status = %s, resolved_at = %s
+                    WHERE id = %s
+                """, (status, resolved_at, ticket_id))
+            conn.close()
+            return True
+        except Exception as e:
+            logger.error(f"Failed to update support ticket status: {e}")
+            conn.close()
+            return False
+

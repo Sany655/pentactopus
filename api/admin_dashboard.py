@@ -12,6 +12,7 @@ from typing import Dict, Any, List
 from api.coupons import CouponManager
 from api.user_store import UserStore
 from hub.device_hub import DeviceHub
+from api.support_store import SupportStore
 
 ADMIN_SECRET = os.getenv("ADMIN_SECRET_KEY", "penta_admin_secret_2026")
 
@@ -75,6 +76,7 @@ class AdminDashboard:
         metrics = cls.get_overview_metrics()
         coupons = CouponManager.list_coupons()
         users = UserStore.list_users()
+        tickets = SupportStore.list_tickets()
 
         # Build User Rows
         user_rows = ""
@@ -147,6 +149,23 @@ class AdminDashboard:
               <td><code style="font-size:11px;">{d.get('device_id')}</code></td>
               <td>{d.get('connection_type')}</td>
               <td><span style="color:#10b981; font-weight:600;">Online</span></td>
+            </tr>
+            """
+
+        # Build Ticket Rows
+        ticket_rows = ""
+        for t in tickets:
+            status_badge = '<span style="color:#10b981; font-weight:600;">Resolved</span>' if t.get("status") == "resolved" else '<span style="color:#ef4444; font-weight:600;">Open</span>'
+            btn_action = '' if t.get("status") == "resolved" else f'<button class="btn btn-sm btn-success" onclick="resolveTicket(\'{t.get("id")}\')">Resolve</button>'
+            ticket_rows += f"""
+            <tr>
+              <td>
+                <div style="font-weight:600; color:#f4f4f5;">{t.get('name')}</div>
+                <div style="font-size:12px; color:#71717a;">{t.get('email')}</div>
+              </td>
+              <td><div style="max-width:300px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="{t.get('message')}">{t.get('message')}</div></td>
+              <td>{status_badge}</td>
+              <td>{btn_action}</td>
             </tr>
             """
 
@@ -370,6 +389,27 @@ class AdminDashboard:
       </table>
     </div>
 
+    <!-- Support Tickets -->
+    <div class="card">
+      <div class="card-header">
+        <h2>Support Tickets</h2>
+        <span style="font-size:12px; color:#71717a;">User inquiries and bug reports</span>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>User</th>
+            <th>Message</th>
+            <th>Status</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{ticket_rows if ticket_rows.strip() else '<tr><td colspan="4" style="text-align:center; color:#71717a; padding:16px;">No support tickets found.</td></tr>'}}
+        </tbody>
+      </table>
+    </div>
+
     <!-- Global Mesh Table -->
     <div class="card">
       <div class="card-header">
@@ -450,6 +490,24 @@ class AdminDashboard:
           'Authorization': getAuthHeader()
         }},
         body: JSON.stringify({{ code: code, enabled: enable }})
+      }});
+      const data = await res.json();
+      if (data.success) {{
+        window.location.reload();
+      }} else {{
+        alert('Action rejected: ' + (data.error || 'Failed'));
+      }}
+    }}
+
+    async function resolveTicket(ticketId) {{
+      if (!confirm('Mark ticket as resolved?')) return;
+      const res = await fetch('/api/admin/support/resolve', {{
+        method: 'POST',
+        headers: {{
+          'Content-Type': 'application/json',
+          'Authorization': getAuthHeader()
+        }},
+        body: JSON.stringify({{ ticket_id: ticketId }})
       }});
       const data = await res.json();
       if (data.success) {{

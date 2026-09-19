@@ -27,6 +27,7 @@ from api.user_store import UserStore
 from api.admin_dashboard import AdminDashboard
 from api.webrtc_signaling import SignalingHub
 from api.user_store import UserStore, AuthError, LockoutError
+from api.support_store import SupportStore
 from api.web_template import HTML_PAGE
 
 class handler(BaseHTTPRequestHandler):
@@ -507,6 +508,28 @@ class handler(BaseHTTPRequestHandler):
             return
 
         # ----------------------------------------------------------------------
+        # Support Tickets
+        # ----------------------------------------------------------------------
+        if path == "/api/support/submit":
+            try:
+                name = data.get("name", "")
+                email = data.get("email", "")
+                message = data.get("message", "")
+                
+                if not name or not email or not message:
+                    self._send_cors(400)
+                    self.wfile.write(json.dumps({"success": False, "error": "Missing required fields"}).encode("utf-8"))
+                    return
+                
+                ticket = SupportStore.create_ticket(name, email, message)
+                self._send_cors(200)
+                self.wfile.write(json.dumps({"success": True, "ticket_id": ticket["id"]}).encode("utf-8"))
+            except Exception as e:
+                self._send_cors(500)
+                self.wfile.write(json.dumps({"success": False, "error": str(e)}).encode("utf-8"))
+            return
+
+        # ----------------------------------------------------------------------
         # Admin Operations
         # ----------------------------------------------------------------------
         if path.startswith("/api/admin/"):
@@ -623,6 +646,31 @@ class handler(BaseHTTPRequestHandler):
                 self.wfile.write(json.dumps({"success": ok}).encode("utf-8"))
             except Exception as e:
                 self._send_cors(400)
+                self.wfile.write(json.dumps({"success": False, "error": str(e)}).encode("utf-8"))
+            return
+
+        if path == "/api/admin/support/resolve":
+            if not is_admin_auth:
+                self._send_cors(403)
+                self.wfile.write(json.dumps({"success": False, "error": "Unauthorized. Admin credentials required."}).encode("utf-8"))
+                return
+            
+            try:
+                ticket_id = data.get("ticket_id")
+                if not ticket_id:
+                    self._send_cors(400)
+                    self.wfile.write(json.dumps({"success": False, "error": "Missing ticket_id"}).encode("utf-8"))
+                    return
+                
+                ticket = SupportStore.resolve_ticket(ticket_id)
+                if ticket:
+                    self._send_cors(200)
+                    self.wfile.write(json.dumps({"success": True, "ticket": ticket}).encode("utf-8"))
+                else:
+                    self._send_cors(404)
+                    self.wfile.write(json.dumps({"success": False, "error": "Ticket not found"}).encode("utf-8"))
+            except Exception as e:
+                self._send_cors(500)
                 self.wfile.write(json.dumps({"success": False, "error": str(e)}).encode("utf-8"))
             return
 

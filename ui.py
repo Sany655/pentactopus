@@ -38,6 +38,7 @@ from api.coupons import CouponManager
 from api.billing import BillingManager, PLANS
 from api.admin_dashboard import AdminDashboard
 from api.user_store import UserStore, AuthError, LockoutError
+from api.support_store import SupportStore
 from local_ui_template import LOCAL_UI_HTML
 
 REPORTS_DIR = os.path.join(BASE_DIR, "reports")
@@ -252,6 +253,42 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
 
         elif path == "/api/mobile/type":
             self.handle_mobile_type(data)
+
+        elif path == "/api/support/submit":
+            try:
+                name = data.get("name", "")
+                email = data.get("email", "")
+                message = data.get("message", "")
+                
+                if not name or not email or not message:
+                    self._send_json({"success": False, "error": "Missing required fields"}, 400)
+                    return
+                
+                ticket = SupportStore.create_ticket(name, email, message)
+                self._send_json({"success": True, "ticket_id": ticket["id"]})
+            except Exception as e:
+                self._send_json({"success": False, "error": str(e)}, 500)
+            return
+            
+        elif path == "/api/admin/support/resolve":
+            auth_header = self.headers.get("Authorization", "")
+            if not AdminDashboard.verify_auth(auth_header):
+                self._send_json({"success": False, "error": "Unauthorized. Admin credentials required."}, 403)
+                return
+            try:
+                ticket_id = data.get("ticket_id")
+                if not ticket_id:
+                    self._send_json({"success": False, "error": "Missing ticket_id"}, 400)
+                    return
+                ticket = SupportStore.resolve_ticket(ticket_id)
+                if ticket:
+                    self._send_json({"success": True, "ticket": ticket})
+                else:
+                    self._send_json({"success": False, "error": "Ticket not found"}, 404)
+            except Exception as e:
+                self._send_json({"success": False, "error": str(e)}, 500)
+            return
+
         elif path == "/api/admin/coupons/create":
             try:
                 c = CouponManager.create_coupon(
