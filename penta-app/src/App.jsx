@@ -34,6 +34,7 @@ export default function App() {
   const [supportName, setSupportName] = useState('');
   const [supportEmail, setSupportEmail] = useState('');
   const [supportMessage, setSupportMessage] = useState('');
+  const [supportImages, setSupportImages] = useState([]);
   const [supportStatus, setSupportStatus] = useState('');
   const [expandedFaq, setExpandedFaq] = useState(null);
   
@@ -793,18 +794,62 @@ export default function App() {
     </div>
   );
 
+  const optimizeImage = (file) => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+          const maxDim = 800;
+          if (width > height && width > maxDim) {
+            height *= maxDim / width;
+            width = maxDim;
+          } else if (height > maxDim) {
+            width *= maxDim / height;
+            height = maxDim;
+          }
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL('image/jpeg', 0.6));
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
   const handleSupportSubmit = async (e) => {
     e.preventDefault();
     if (!supportName || !supportEmail || !supportMessage) {
       setSupportStatus('Please fill all fields.');
       return;
     }
-    setSupportStatus('Sending...');
+    if (supportImages.length > 5) {
+      setSupportStatus('Maximum 5 images allowed.');
+      return;
+    }
+    
+    setSupportStatus('Optimizing images and sending...');
+    
     try {
+      const optimizedImages = await Promise.all(
+        Array.from(supportImages).map(file => optimizeImage(file))
+      );
+
       const res = await fetch(`${serverUrl}/api/support/submit`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: supportName, email: supportEmail, message: supportMessage })
+        body: JSON.stringify({ 
+          name: supportName, 
+          email: supportEmail, 
+          message: supportMessage,
+          images: optimizedImages
+        })
       });
       const data = await res.json();
       if (data.success) {
@@ -812,6 +857,7 @@ export default function App() {
         setSupportName('');
         setSupportEmail('');
         setSupportMessage('');
+        setSupportImages([]);
       } else {
         setSupportStatus(`Error: ${data.error || 'Failed to send message.'}`);
       }
@@ -872,6 +918,39 @@ export default function App() {
               value={supportMessage} 
               onChange={e => setSupportMessage(e.target.value)} 
             />
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: '#a1a1aa' }}>
+                Attach Images (Optional, max 5)
+              </label>
+              <input 
+                type="file" 
+                multiple 
+                accept="image/*"
+                onChange={e => {
+                  const files = Array.from(e.target.files);
+                  if (files.length > 5) {
+                    setSupportStatus('Maximum 5 images allowed.');
+                  } else {
+                    setSupportStatus('');
+                    setSupportImages(files);
+                  }
+                }}
+                style={{
+                  width: '100%',
+                  padding: '10px',
+                  background: '#18181b',
+                  border: '1px solid #27272a',
+                  borderRadius: '6px',
+                  color: '#e4e4e7',
+                  fontSize: '14px'
+                }} 
+              />
+              {supportImages.length > 0 && (
+                <div style={{ marginTop: '8px', fontSize: '13px', color: '#10b981' }}>
+                  {supportImages.length} image(s) selected
+                </div>
+              )}
+            </div>
             <button style={{...styles.button, padding: '14px', fontSize: '15px'}} type="submit">Submit Request</button>
           </form>
         </div>

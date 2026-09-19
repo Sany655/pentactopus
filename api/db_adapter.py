@@ -112,9 +112,14 @@ class DatabaseAdapter:
                         message TEXT NOT NULL,
                         status TEXT NOT NULL DEFAULT 'open',
                         created_at DOUBLE PRECISION NOT NULL,
-                        resolved_at DOUBLE PRECISION
+                        resolved_at DOUBLE PRECISION,
+                        images TEXT
                     );
                 """)
+                try:
+                    cur.execute("ALTER TABLE penta_support_tickets ADD COLUMN images TEXT;")
+                except Exception:
+                    conn.rollback()
             cls._initialized = True
             conn.close()
             return True
@@ -286,7 +291,15 @@ class DatabaseAdapter:
             with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
                 cur.execute("SELECT * FROM penta_support_tickets ORDER BY created_at DESC")
                 rows = cur.fetchall()
-                tickets = {r["id"]: dict(r) for r in rows}
+                tickets = {}
+                for r in rows:
+                    t = dict(r)
+                    if t.get("images") and isinstance(t["images"], str):
+                        try:
+                            t["images"] = json.loads(t["images"])
+                        except Exception:
+                            t["images"] = []
+                    tickets[t["id"]] = t
                 conn.close()
                 return tickets
         except Exception as e:
@@ -305,9 +318,10 @@ class DatabaseAdapter:
 
         try:
             with conn.cursor() as cur:
+                images_str = json.dumps(ticket.get("images", [])) if ticket.get("images") else None
                 cur.execute("""
-                    INSERT INTO penta_support_tickets (id, name, email, message, status, created_at, resolved_at)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    INSERT INTO penta_support_tickets (id, name, email, message, status, created_at, resolved_at, images)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                     ON CONFLICT (id) DO UPDATE SET
                         status = EXCLUDED.status,
                         resolved_at = EXCLUDED.resolved_at;
@@ -318,7 +332,8 @@ class DatabaseAdapter:
                     ticket["message"],
                     ticket.get("status", "open"),
                     ticket.get("created_at", time.time()),
-                    ticket.get("resolved_at")
+                    ticket.get("resolved_at"),
+                    images_str
                 ))
             conn.close()
             return True

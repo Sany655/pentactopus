@@ -259,12 +259,16 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
                 name = data.get("name", "")
                 email = data.get("email", "")
                 message = data.get("message", "")
+                images = data.get("images", [])
+                
+                if not isinstance(images, list):
+                    images = []
                 
                 if not name or not email or not message:
                     self._send_json({"success": False, "error": "Missing required fields"}, 400)
                     return
                 
-                ticket = SupportStore.create_ticket(name, email, message)
+                ticket = SupportStore.create_ticket(name, email, message, images=images[:5])
                 self._send_json({"success": True, "ticket_id": ticket["id"]})
             except Exception as e:
                 self._send_json({"success": False, "error": str(e)}, 500)

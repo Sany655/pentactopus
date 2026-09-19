@@ -515,13 +515,17 @@ class handler(BaseHTTPRequestHandler):
                 name = data.get("name", "")
                 email = data.get("email", "")
                 message = data.get("message", "")
+                images = data.get("images", [])
+                
+                if not isinstance(images, list):
+                    images = []
                 
                 if not name or not email or not message:
                     self._send_cors(400)
                     self.wfile.write(json.dumps({"success": False, "error": "Missing required fields"}).encode("utf-8"))
                     return
                 
-                ticket = SupportStore.create_ticket(name, email, message)
+                ticket = SupportStore.create_ticket(name, email, message, images=images[:5])
                 self._send_cors(200)
                 self.wfile.write(json.dumps({"success": True, "ticket_id": ticket["id"]}).encode("utf-8"))
             except Exception as e:

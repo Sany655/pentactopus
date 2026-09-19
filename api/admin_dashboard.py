@@ -157,13 +157,22 @@ class AdminDashboard:
         for t in tickets:
             status_badge = '<span style="color:#10b981; font-weight:600;">Resolved</span>' if t.get("status") == "resolved" else '<span style="color:#ef4444; font-weight:600;">Open</span>'
             btn_action = '' if t.get("status") == "resolved" else f'<button class="btn btn-sm btn-success" onclick="resolveTicket(\'{t.get("id")}\')">Resolve</button>'
+            
+            images_html = ""
+            if t.get("images"):
+                for img_data in t["images"]:
+                    images_html += f'<img src="{img_data}" style="height: 50px; margin-right: 8px; margin-top: 8px; border-radius: 4px; border: 1px solid #3f3f46; cursor: pointer;" onclick="window.open(this.src)" />'
+
             ticket_rows += f"""
             <tr>
               <td>
                 <div style="font-weight:600; color:#f4f4f5;">{t.get('name')}</div>
                 <div style="font-size:12px; color:#71717a;">{t.get('email')}</div>
               </td>
-              <td><div style="max-width:300px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="{t.get('message')}">{t.get('message')}</div></td>
+              <td>
+                <div style="max-width:350px; white-space:normal;">{t.get('message')}</div>
+                <div style="display: flex; flex-wrap: wrap;">{images_html}</div>
+              </td>
               <td>{status_badge}</td>
               <td>{btn_action}</td>
             </tr>

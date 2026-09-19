@@ -67,6 +67,7 @@ pentactopus/                         # Project Root
 │   ├── user_store.py                # ✅ PBKDF2 auth, sessions, brute-force defense
 │   ├── billing.py                   # ✅ Stripe checkout, pricing plans
 │   ├── coupons.py                   # ✅ Promo code engine
+│   ├── support_store.py             # ✅ Support ticketing & image storage
 │   └── db_adapter.py               # ✅ Postgres/Upstash KV persistence layer
 │
 ├── data/                            # 💾 Local JSON Data Store
@@ -205,8 +206,9 @@ pentactopus/                         # Project Root
 | 1 | **Landing Page** | Marketing pitch, feature showcase, download CTAs, pricing | ✅ Built |
 | 2 | **Login / Register** | Auth modals with brute-force protection | ✅ Built |
 | 3 | **Dashboard** | Authenticated user dashboard | ✅ Built |
-| 4 | **Admin Panel** | User management, RBAC, coupons, MRR metrics | ✅ Built |
-| 5 | **Download Center** | .exe + .apk download links | ✅ Built |
+| 4 | **Admin Panel** | User management, RBAC, coupons, support tickets | ✅ Built |
+| 5 | **Support & FAQ** | Contact form with image uploads, dynamic FAQ | ✅ Built |
+| 6 | **Download Center** | .exe + .apk download links | ✅ Built |
 
 ### Backend Infrastructure
 
@@ -231,6 +233,7 @@ pentactopus/                         # Project Root
 | `api/billing.py` + `api/coupons.py` | Stripe integration + promo engine |
 | `api/admin_dashboard.py` | Admin governance panel |
 | `api/index.py` | Vercel serverless router (25+ endpoints verified) |
+| `api/support_store.py` | Support ticketing and DB logic |
 | `api/web_template.py` | Full landing + auth UI (1174 lines) |
 | `hub/device_hub.py` | Device mesh with KV persistence |
 | `agent/core.py` | Android agent loop (perception→action) |
@@ -500,3 +503,15 @@ pentactopus/                         # Project Root
 
 > [!CAUTION]
 > **Anti-Hallucination Rule**: If you haven't read a file, DO NOT assume its contents. Use `view_file` first. If you aren't sure about something, ASK — don't guess.
+
+---
+
+### Sprint Results Log
+
+#### 2026-09-20 - Sprint: Support & FAQ Module
+* **Objective:** Implement a full-stack contact/support system with FAQ and image uploads on the landing page, plus admin review capabilities.
+* **Codebase Observe:** Reviewed `App.jsx`, `index.py`, `ui.py`, and `db_adapter.py` to integrate the form and backend.
+* **Plan:** Add Postgres table `penta_support_tickets` with `images` column, create `api/support_store.py`, add `<input type="file">` with Canvas optimization in `App.jsx`, and list tickets in `admin_dashboard.py`.
+* **Implement:** Completed DB schema update, backend POST routes, React frontend, and admin console resolve button with image thumbnails.
+* **Test:** Tested via browser subagent and manual verification. Tickets successfully save and render in Admin dashboard.
+* **Status:** ✅ Successfully completed and production-ready.

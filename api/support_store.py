@@ -62,7 +62,7 @@ class SupportStore:
                 DatabaseAdapter.save_support_ticket(t)
 
     @classmethod
-    def create_ticket(cls, name: str, email: str, message: str) -> Dict[str, Any]:
+    def create_ticket(cls, name: str, email: str, message: str, images: Optional[List[str]] = None) -> Dict[str, Any]:
         """Create a new support ticket."""
         tickets = cls._load_tickets()
         ticket_id = f"ticket_{uuid.uuid4().hex[:10]}"
@@ -72,6 +72,7 @@ class SupportStore:
             "name": name.strip(),
             "email": email.lower().strip(),
             "message": message.strip(),
+            "images": images or [],
             "status": "open",
             "created_at": time.time(),
             "resolved_at": None
