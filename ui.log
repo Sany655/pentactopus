@@ -1,0 +1,7 @@
+=================================================================
+  PENTACTOPUS NATIVE COMMAND HUB RUNNING
+=================================================================
+  [DAEMON] PentaDaemon active & paired with http://localhost:5051
+USING MODULE: C:\All\works\pentactopus\api\support_store.py
+IMAGES LEN: 1
+TICKET CREATED: dict_keys(['id', 'name', 'email', 'message', 'images', 'status', 'created_at', 'resolved_at'])

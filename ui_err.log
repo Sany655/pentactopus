@@ -1,0 +1,2 @@
+PostgreSQL connection failed, falling back to local file store: invalid channel_binding value: "requirerequire"
+

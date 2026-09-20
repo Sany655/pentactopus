@@ -176,7 +176,17 @@ class handler(BaseHTTPRequestHandler):
                 self.wfile.write(json.dumps({"success": True, "user": user}).encode("utf-8"))
             else:
                 self._send_cors(401)
-                self.wfile.write(json.dumps({"success": False, "error": "Invalid or expired session token"}).encode("utf-8"))
+                self.wfile.write(json.dumps({"success": False, "error": "Unauthorized"}).encode("utf-8"))
+            return
+
+        if path == "/api/usage/history":
+            history = [
+                {"id": 1, "time": "Just now", "device": "pc_windows_host", "action": "Calculated cloud mesh topology"},
+                {"id": 2, "time": "5 mins ago", "device": "pc_windows_host", "action": "Verified active connections"},
+                {"id": 3, "time": "1 hour ago", "device": "phone_android_node", "action": "Synced battery telemetry"}
+            ]
+            self._send_cors(200)
+            self.wfile.write(json.dumps({"success": True, "history": history}).encode("utf-8"))
             return
 
         if path == "/api/admin/overview":
@@ -432,26 +442,6 @@ class handler(BaseHTTPRequestHandler):
             self.wfile.write(json.dumps({"success": True}).encode("utf-8"))
             return
 
-        if path == "/api/webrtc/signal":
-            auth_header = self.headers.get("Authorization", "")
-            if not UserStore.validate_session(auth_header):
-                self._send_cors(401)
-                self.wfile.write(json.dumps({"error": "Unauthorized"}).encode("utf-8"))
-                return
-            target_id = data.get("target_id")
-            sender_id = data.get("sender_id")
-            signal_type = data.get("type")
-            payload = data.get("payload")
-            
-            if not all([target_id, sender_id, signal_type, payload]):
-                self._send_cors(400)
-                self.wfile.write(json.dumps({"error": "Missing parameters"}).encode("utf-8"))
-                return
-                
-            SignalingHub.push_signal(target_id, sender_id, signal_type, payload)
-            self._send_cors(200)
-            self.wfile.write(json.dumps({"success": True}).encode("utf-8"))
-            return
 
         # ----------------------------------------------------------------------
         # Billing & Coupons

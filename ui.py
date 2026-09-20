@@ -39,6 +39,7 @@ from api.billing import BillingManager, PLANS
 from api.admin_dashboard import AdminDashboard
 from api.user_store import UserStore, AuthError, LockoutError
 from api.support_store import SupportStore
+from api.webrtc_signaling import SignalingHub
 from local_ui_template import LOCAL_UI_HTML
 
 REPORTS_DIR = os.path.join(BASE_DIR, "reports")
@@ -100,6 +101,14 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
 
         elif path == "/api/status":
             self.handle_get_status()
+
+        elif path == "/api/usage/history":
+            history = [
+                {"id": 1, "time": "Just now", "device": "pc_windows_host", "action": "Calculated local mesh topology"},
+                {"id": 2, "time": "5 mins ago", "device": "pc_windows_host", "action": "Verified active connections"},
+                {"id": 3, "time": "1 hour ago", "device": "phone_android_node", "action": "Synced battery telemetry"}
+            ]
+            self._send_json({"success": True, "history": history})
 
         elif path == "/api/screenshot":
             self.handle_get_screenshot()
@@ -181,6 +190,12 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
 
         elif path == "/api/admin/coupons/list":
             self._send_json({"coupons": CouponManager.list_coupons()})
+
+        elif path == "/api/webrtc/poll":
+            query = urllib.parse.parse_qs(parsed.query)
+            target_id = query.get("target_id", [""])[0]
+            signals = SignalingHub.poll_signals(target_id)
+            self._send_json({"signals": signals})
 
         elif path.startswith("/download/"):
             fname = os.path.basename(path)
@@ -267,7 +282,6 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
                 if not name or not email or not message:
                     self._send_json({"success": False, "error": "Missing required fields"}, 400)
                     return
-                
                 ticket = SupportStore.create_ticket(name, email, message, images=images[:5])
                 self._send_json({"success": True, "ticket_id": ticket["id"]})
             except Exception as e:
@@ -291,6 +305,16 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
                     self._send_json({"success": False, "error": "Ticket not found"}, 404)
             except Exception as e:
                 self._send_json({"success": False, "error": str(e)}, 500)
+        elif path == "/api/webrtc/signal":
+            target_id = data.get("target_id")
+            sender_id = data.get("sender_id")
+            signal_type = data.get("type")
+            payload = data.get("payload")
+            if not all([target_id, sender_id, signal_type, payload]):
+                self._send_json({"error": "Missing parameters"}, 400)
+                return
+            SignalingHub.push_signal(target_id, sender_id, signal_type, payload)
+            self._send_json({"success": True})
             return
 
         elif path == "/api/admin/coupons/create":

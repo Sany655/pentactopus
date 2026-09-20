@@ -38,6 +38,11 @@ export default function App() {
   const [supportStatus, setSupportStatus] = useState('');
   const [expandedFaq, setExpandedFaq] = useState(null);
   
+  // Billing & Usage State
+  const [usageHistory, setUsageHistory] = useState([]);
+  const [billingMath, setBillingMath] = useState(null);
+  const [isUpgrading, setIsUpgrading] = useState(false);
+  
   // Viewport State
   const [selectedDevice, setSelectedDevice] = useState('pc');
   const [frameTimestamp, setFrameTimestamp] = useState(Date.now());
@@ -48,6 +53,19 @@ export default function App() {
   // Mobile / Touch State
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [touchStartPos, setTouchStartPos] = useState(null);
+
+  // Multi-Device Communication & Control (F3)
+  const [controlPermission, setControlPermission] = useState('interactive'); // 'view_only' | 'interactive' | 'admin'
+  const [audioStreamActive, setAudioStreamActive] = useState(false);
+  const [sessionChatOpen, setSessionChatOpen] = useState(false);
+  const [sessionChatHistory, setSessionChatHistory] = useState([
+    { sender: 'system', text: 'P2P Session initialized. Multi-device channel ready.', time: 'Now' }
+  ]);
+  const [sessionChatMessage, setSessionChatMessage] = useState('');
+  const [sessionLatency, setSessionLatency] = useState(24);
+  const [viewportZoom, setViewportZoom] = useState(1.0);
+  const localAudioStream = useRef(null);
+  const pinchStartDist = useRef(null);
   
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768);
@@ -66,6 +84,26 @@ export default function App() {
       setCurrentView('chat');
     }
   }, [authToken, currentView]);
+
+  useEffect(() => {
+    if (currentView === 'usage') {
+      fetch(`${serverUrl}/api/usage/history`, {
+        headers: { 'Authorization': `Bearer ${authToken}` }
+      })
+      .then(r => r.json())
+      .then(d => { if (d.success) setUsageHistory(d.history); })
+      .catch(e => console.error(e));
+    } else if (currentView === 'subscription') {
+      fetch(`${serverUrl}/api/billing/calculate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ devices: 2, ai_tasks: 15, stream_hours: 10 })
+      })
+      .then(r => r.json())
+      .then(d => setBillingMath(d))
+      .catch(e => console.error(e));
+    }
+  }, [currentView, authToken, serverUrl]);
 
   useEffect(() => {
     if (currentView === 'anydesk') {
@@ -196,6 +234,14 @@ export default function App() {
     dataChannel.current = pc.createDataChannel('control');
     dataChannel.current.onopen = () => setRtcConnectionState('connected');
     dataChannel.current.onclose = () => setRtcConnectionState('disconnected');
+    dataChannel.current.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.type === 'chat') {
+          setSessionChatHistory(prev => [...prev, data]);
+        }
+      } catch (err) {}
+    };
 
     pc.ontrack = (event) => {
       if (videoRef.current) {
@@ -224,6 +270,11 @@ export default function App() {
 
   const stopWebRTCSession = () => {
     if (webrtcPollInterval.current) clearInterval(webrtcPollInterval.current);
+    if (localAudioStream.current) {
+      localAudioStream.current.getTracks().forEach(t => t.stop());
+      localAudioStream.current = null;
+    }
+    setAudioStreamActive(false);
     if (peerConnection.current) peerConnection.current.close();
     setRtcConnectionState('disconnected');
   };
@@ -278,6 +329,18 @@ export default function App() {
       const pc = new RTCPeerConnection(configuration);
       peerConnection.current = pc;
       
+      pc.ondatachannel = (event) => {
+        dataChannel.current = event.channel;
+        dataChannel.current.onmessage = (e) => {
+          try {
+            const data = JSON.parse(e.data);
+            if (data.type === 'chat') {
+              setSessionChatHistory(prev => [...prev, data]);
+            }
+          } catch (err) {}
+        };
+      };
+
       pc.onicecandidate = async (event) => {
         if (event.candidate) {
           await sendHostWebRTCSignal(client_id, 'ice', event.candidate);
@@ -328,20 +391,89 @@ export default function App() {
             await pc.setRemoteDescription(new RTCSessionDescription(sig.payload));
           } else if (sig.type === 'ice') {
             await pc.addIceCandidate(new RTCIceCandidate(sig.payload));
+          } else if (sig.type === 'chat') {
+            setSessionChatHistory(prev => [...prev, sig.payload]);
           }
         }
       }
     } catch (e) {}
   };
 
+  const toggleAudioChannel = async () => {
+    try {
+      if (audioStreamActive) {
+        if (localAudioStream.current) {
+          localAudioStream.current.getTracks().forEach(t => t.stop());
+          localAudioStream.current = null;
+        }
+        setAudioStreamActive(false);
+      } else {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        localAudioStream.current = stream;
+        if (peerConnection.current) {
+          stream.getAudioTracks().forEach(track => {
+            peerConnection.current.addTrack(track, stream);
+          });
+        }
+        setAudioStreamActive(true);
+      }
+    } catch (err) {
+      console.warn("Audio toggle failed:", err);
+    }
+  };
+
+  const sendSessionChatMessage = async () => {
+    if (!sessionChatMessage.trim()) return;
+    const msg = {
+      type: 'chat',
+      sender: deviceCode,
+      text: sessionChatMessage.trim(),
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    };
+    setSessionChatHistory(prev => [...prev, msg]);
+    setSessionChatMessage('');
+
+    if (dataChannel.current && dataChannel.current.readyState === 'open') {
+      try {
+        dataChannel.current.send(JSON.stringify(msg));
+      } catch (e) {}
+    } else {
+      await sendWebRTCSignal('chat', msg);
+    }
+  };
+
   const handleViewportTouchStart = (e) => {
-    if (e.touches.length > 0) {
+    if (e.touches.length === 2) {
+      const dx = e.touches[0].clientX - e.touches[1].clientX;
+      const dy = e.touches[0].clientY - e.touches[1].clientY;
+      pinchStartDist.current = Math.hypot(dx, dy);
+    } else if (e.touches.length === 1) {
       setTouchStartPos({ x: e.touches[0].clientX, y: e.touches[0].clientY });
     }
   };
 
+  const handleViewportTouchMove = (e) => {
+    if (e.touches.length === 2 && pinchStartDist.current) {
+      const dx = e.touches[0].clientX - e.touches[1].clientX;
+      const dy = e.touches[0].clientY - e.touches[1].clientY;
+      const currentDist = Math.hypot(dx, dy);
+      const ratio = currentDist / pinchStartDist.current;
+      setViewportZoom(prev => Math.min(3.0, Math.max(0.6, prev * (ratio > 1 ? 1.03 : 0.97))));
+      pinchStartDist.current = currentDist;
+    }
+  };
+
   const handleViewportTouchEnd = async (e) => {
-    if (!viewportRef.current || e.changedTouches.length === 0) return;
+    if (controlPermission === 'view_only') {
+      setTouchStartPos(null);
+      pinchStartDist.current = null;
+      return;
+    }
+
+    if (!viewportRef.current || e.changedTouches.length === 0) {
+      pinchStartDist.current = null;
+      return;
+    }
     const touch = e.changedTouches[0];
     const rect = viewportRef.current.getBoundingClientRect();
     const normX = Math.max(0, Math.min(1, (touch.clientX - rect.left) / rect.width));
@@ -362,10 +494,12 @@ export default function App() {
           });
         } catch (err) {}
         setTouchStartPos(null);
+        pinchStartDist.current = null;
         return;
       }
     }
     setTouchStartPos(null);
+    pinchStartDist.current = null;
 
     try {
       const isLocal = isLocalServer();
@@ -670,40 +804,148 @@ export default function App() {
 
   const renderAnydesk = () => (
     <div style={styles.viewportContainer}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <button style={{ background: '#27272a', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer' }} onClick={() => setCurrentView('connect')}>← Leave Session</button>
-          <h2 style={{ fontSize: '16px', fontWeight: '500', margin: 0 }}>Controlling Remote Session: <span style={{ color: '#60a5fa' }}>{targetCode}</span></h2>
-          <span style={{ fontSize: '12px', color: rtcConnectionState === 'connected' ? '#10b981' : '#f59e0b', padding: '2px 8px', background: 'rgba(255,255,255,0.05)', borderRadius: '12px' }}>
-            {rtcConnectionState === 'connected' ? '● WebRTC Active' : '● Polling Fallback'}
-          </span>
+      {/* Top Session Control Bar */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '10px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+          <button style={{ background: '#27272a', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '13px' }} onClick={() => setCurrentView('connect')}>← Leave</button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontSize: '14px', fontWeight: '600' }}>Host: <span style={{ color: '#60a5fa' }}>{targetCode}</span></span>
+            <span style={{ fontSize: '11px', color: rtcConnectionState === 'connected' ? '#10b981' : '#f59e0b', padding: '2px 8px', background: 'rgba(255,255,255,0.05)', borderRadius: '12px', border: `1px solid ${rtcConnectionState === 'connected' ? 'rgba(16,185,129,0.3)' : 'rgba(245,158,11,0.3)'}` }}>
+              {rtcConnectionState === 'connected' ? `● WebRTC (${sessionLatency}ms)` : '● Fallback Relay'}
+            </span>
+          </div>
         </div>
-        
-        <div style={{ display: 'flex', gap: '8px' }}>
-          <button style={{ padding: '6px 12px', background: '#18181b', border: '1px solid #27272a', color: '#a1a1aa', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' }}>Win+D</button>
-          <button style={{ padding: '6px 12px', background: '#18181b', border: '1px solid #27272a', color: '#a1a1aa', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' }}>Vol+</button>
+
+        {/* Multi-Device F3 Toolbar */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+          {/* Permission Mode Selector */}
+          <div style={{ display: 'flex', background: '#18181b', borderRadius: '8px', padding: '2px', border: '1px solid #27272a' }}>
+            <button 
+              style={{ padding: '4px 8px', fontSize: '11px', border: 'none', borderRadius: '6px', cursor: 'pointer', background: controlPermission === 'view_only' ? '#3b82f6' : 'transparent', color: controlPermission === 'view_only' ? '#fff' : '#a1a1aa' }}
+              onClick={() => setControlPermission('view_only')}
+            >
+              👁️ View
+            </button>
+            <button 
+              style={{ padding: '4px 8px', fontSize: '11px', border: 'none', borderRadius: '6px', cursor: 'pointer', background: controlPermission === 'interactive' ? '#3b82f6' : 'transparent', color: controlPermission === 'interactive' ? '#fff' : '#a1a1aa' }}
+              onClick={() => setControlPermission('interactive')}
+            >
+              🖱️ Control
+            </button>
+            <button 
+              style={{ padding: '4px 8px', fontSize: '11px', border: 'none', borderRadius: '6px', cursor: 'pointer', background: controlPermission === 'admin' ? '#ef4444' : 'transparent', color: controlPermission === 'admin' ? '#fff' : '#a1a1aa' }}
+              onClick={() => setControlPermission('admin')}
+            >
+              🛡️ Admin
+            </button>
+          </div>
+
+          {/* Audio/Voice Stream Toggle */}
+          <button 
+            style={{ padding: '6px 10px', fontSize: '12px', borderRadius: '6px', cursor: 'pointer', border: '1px solid #27272a', background: audioStreamActive ? 'rgba(16,185,129,0.2)' : '#18181b', color: audioStreamActive ? '#10b981' : '#a1a1aa' }}
+            onClick={toggleAudioChannel}
+            title="Two-way audio/voice stream"
+          >
+            {audioStreamActive ? '🎙️ Mic Active' : '🎙️ Mic Off'}
+          </button>
+
+          {/* Zoom Controls */}
+          <div style={{ display: 'flex', alignItems: 'center', background: '#18181b', borderRadius: '6px', border: '1px solid #27272a', padding: '2px 6px' }}>
+            <button style={{ background: 'none', border: 'none', color: '#a1a1aa', cursor: 'pointer', padding: '2px 6px', fontSize: '13px' }} onClick={() => setViewportZoom(z => Math.max(0.6, z - 0.15))}>-</button>
+            <span style={{ fontSize: '11px', color: '#e4e4e7', minWidth: '36px', textAlign: 'center' }}>{Math.round(viewportZoom * 100)}%</span>
+            <button style={{ background: 'none', border: 'none', color: '#a1a1aa', cursor: 'pointer', padding: '2px 6px', fontSize: '13px' }} onClick={() => setViewportZoom(z => Math.min(3.0, z + 0.15))}>+</button>
+          </div>
+
+          {/* In-Session Chat Drawer Toggle */}
+          <button 
+            style={{ padding: '6px 10px', fontSize: '12px', borderRadius: '6px', cursor: 'pointer', border: '1px solid #27272a', background: sessionChatOpen ? 'rgba(59,130,246,0.2)' : '#18181b', color: sessionChatOpen ? '#60a5fa' : '#a1a1aa' }}
+            onClick={() => setSessionChatOpen(!sessionChatOpen)}
+          >
+            💬 Chat {sessionChatHistory.length > 1 && `(${sessionChatHistory.length})`}
+          </button>
+
+          {/* Hotkey Shortcuts */}
+          {controlPermission !== 'view_only' && (
+            <div style={{ display: 'flex', gap: '4px' }}>
+              <button style={{ padding: '6px 8px', background: '#18181b', border: '1px solid #27272a', color: '#a1a1aa', borderRadius: '6px', cursor: 'pointer', fontSize: '11px' }}>Win+D</button>
+              <button style={{ padding: '6px 8px', background: '#18181b', border: '1px solid #27272a', color: '#a1a1aa', borderRadius: '6px', cursor: 'pointer', fontSize: '11px' }}>Esc</button>
+            </div>
+          )}
         </div>
       </div>
       
-      <div 
-        ref={viewportRef} 
-        onClick={handleViewportTouchEnd} // Unified click/touch logic
-        onTouchStart={handleViewportTouchStart}
-        onTouchEnd={handleViewportTouchEnd}
-        style={{...styles.canvasWrapper, touchAction: 'none'}}
-      >
-        <video 
-          ref={videoRef}
-          autoPlay 
-          playsInline 
-          style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'contain', zIndex: rtcConnectionState === 'connected' ? 2 : 0 }} 
-        />
-        <img 
-          src={isLocalServer() ? `${serverUrl}${selectedDevice === 'pc' ? '/api/pc/screen' : '/api/screenshot'}?t=${frameTimestamp}` : `${serverUrl}/api/device/${targetCode || (selectedDevice === 'pc' ? 'pc_windows_host' : 'phone_android_node')}/frame?t=${frameTimestamp}`}
-          alt="Remote Viewport Fallback" 
-          onError={(e) => { e.target.src = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='300' viewBox='0 0 400 300'><rect width='100%' height='100%' fill='%23121215'/><text x='50%' y='50%' fill='%2371717a' font-family='sans-serif' font-size='14' text-anchor='middle'>Awaiting Remote Display Buffer...</text></svg>"; }}
-          style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', cursor: 'crosshair', userSelect: 'none', position: 'relative', zIndex: 1 }} 
-        />
+      {/* Main Viewport + Chat Drawer Layout */}
+      <div style={{ flex: 1, display: 'flex', gap: '12px', overflow: 'hidden', minHeight: 0 }}>
+        <div 
+          ref={viewportRef} 
+          onClick={handleViewportTouchEnd}
+          onTouchStart={handleViewportTouchStart}
+          onTouchMove={handleViewportTouchMove}
+          onTouchEnd={handleViewportTouchEnd}
+          style={{
+            ...styles.canvasWrapper,
+            touchAction: 'none',
+            flex: 1,
+            position: 'relative'
+          }}
+        >
+          <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', transform: `scale(${viewportZoom})`, transformOrigin: 'center center', transition: 'transform 0.1s ease-out' }}>
+            <video 
+              ref={videoRef}
+              autoPlay 
+              playsInline 
+              style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'contain', zIndex: rtcConnectionState === 'connected' ? 2 : 0 }} 
+            />
+            <img 
+              src={isLocalServer() ? `${serverUrl}${selectedDevice === 'pc' ? '/api/pc/screen' : '/api/screenshot'}?t=${frameTimestamp}` : `${serverUrl}/api/device/${targetCode || (selectedDevice === 'pc' ? 'pc_windows_host' : 'phone_android_node')}/frame?t=${frameTimestamp}`}
+              alt="Remote Viewport Fallback" 
+              onError={(e) => { e.target.src = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='300' viewBox='0 0 400 300'><rect width='100%' height='100%' fill='%23121215'/><text x='50%' y='50%' fill='%2371717a' font-family='sans-serif' font-size='14' text-anchor='middle'>Awaiting Remote Display Buffer...</text></svg>"; }}
+              style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', cursor: controlPermission === 'view_only' ? 'default' : 'crosshair', userSelect: 'none', position: 'relative', zIndex: 1 }} 
+            />
+          </div>
+          {controlPermission === 'view_only' && (
+            <div style={{ position: 'absolute', top: 12, left: 12, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', padding: '4px 10px', borderRadius: '6px', fontSize: '11px', color: '#fbbf24', zIndex: 10 }}>
+              👁️ View-Only Mode Active (Inputs Disabled)
+            </div>
+          )}
+        </div>
+
+        {/* P2P In-Session Text Chat (F3) */}
+        {sessionChatOpen && (
+          <div style={{ width: isMobile ? '100%' : '300px', background: '#121215', border: '1px solid #27272a', borderRadius: '12px', display: 'flex', flexDirection: 'column', overflow: 'hidden', flexShrink: 0 }}>
+            <div style={{ padding: '12px 16px', borderBottom: '1px solid #27272a', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ fontSize: '13px', fontWeight: '600', color: '#e4e4e7' }}>In-Session Comms</div>
+              <button style={{ background: 'none', border: 'none', color: '#71717a', cursor: 'pointer', fontSize: '14px' }} onClick={() => setSessionChatOpen(false)}>✕</button>
+            </div>
+            <div style={{ flex: 1, padding: '12px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {sessionChatHistory.map((m, idx) => (
+                <div key={idx} style={{ background: m.sender === deviceCode ? 'rgba(59,130,246,0.15)' : '#18181b', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '8px', padding: '8px 10px', fontSize: '12px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '3px' }}>
+                    <span style={{ fontWeight: '600', color: m.sender === deviceCode ? '#60a5fa' : '#a1a1aa', fontSize: '11px' }}>{m.sender === deviceCode ? 'You' : m.sender}</span>
+                    <span style={{ color: '#71717a', fontSize: '10px' }}>{m.time}</span>
+                  </div>
+                  <div style={{ color: '#f4f4f5', wordBreak: 'break-word' }}>{m.text}</div>
+                </div>
+              ))}
+            </div>
+            <div style={{ padding: '10px', borderTop: '1px solid #27272a', display: 'flex', gap: '6px' }}>
+              <input 
+                type="text" 
+                placeholder="Message remote host..." 
+                value={sessionChatMessage} 
+                onChange={e => setSessionChatMessage(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') sendSessionChatMessage(); }}
+                style={{ ...styles.input, marginBottom: 0, padding: '8px 10px', fontSize: '12px', flex: 1 }} 
+              />
+              <button 
+                onClick={sendSessionChatMessage}
+                style={{ ...styles.button, width: 'auto', padding: '0 14px', fontSize: '12px' }}
+              >
+                Send
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -745,6 +987,24 @@ export default function App() {
     </div>
   );
 
+  const handleUpgrade = async () => {
+    setIsUpgrading(true);
+    try {
+      const res = await fetch(`${serverUrl}/api/stripe/create-checkout`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plan_id: 'pro', email: 'customer@example.com' })
+      });
+      const data = await res.json();
+      if (data.checkout_url) {
+        window.location.href = data.checkout_url;
+      }
+    } catch (err) {
+      console.error(err);
+    }
+    setIsUpgrading(false);
+  };
+
   const renderSubscription = () => (
     <div style={styles.loginContainer}>
       <div style={{...styles.loginCard, width: '420px'}}>
@@ -759,8 +1019,32 @@ export default function App() {
           </p>
         </div>
         
+        {billingMath && (
+          <div style={{ background: '#27272a', padding: '16px', borderRadius: '8px', marginBottom: '24px', fontSize: '13px', color: '#a1a1aa' }}>
+            <div style={{ color: '#fff', marginBottom: '8px', fontWeight: 'bold' }}>Live Resource Calculation</div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+              <span>AI Token Cost:</span>
+              <span>${billingMath.ai_operating_cost.toFixed(2)}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+              <span>Bandwidth/TURN:</span>
+              <span>${billingMath.turn_operating_cost.toFixed(2)}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #3f3f46', paddingTop: '4px', marginTop: '4px', color: '#fff', fontWeight: 'bold' }}>
+              <span>Total Cost:</span>
+              <span>${billingMath.total_operating_cost.toFixed(2)}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '8px', color: '#10b981' }}>
+              <span>PRO Savings:</span>
+              <span>${billingMath.monthly_savings.toFixed(2)}/mo vs competitors</span>
+            </div>
+          </div>
+        )}
+
         {userPlan === 'free' && (
-          <button style={{...styles.button, background: '#10b981', marginBottom: '12px'}}>Upgrade to PRO ($12/mo)</button>
+          <button onClick={handleUpgrade} disabled={isUpgrading} style={{...styles.button, background: '#10b981', marginBottom: '12px'}}>
+            {isUpgrading ? 'Redirecting...' : 'Upgrade to PRO ($12/mo)'}
+          </button>
         )}
         <button style={{...styles.button, background: '#27272a', color: '#fff'}} onClick={() => setCurrentView('chat')}>Back to Dashboard</button>
       </div>
@@ -774,19 +1058,19 @@ export default function App() {
         <p style={{ color: '#a1a1aa', fontSize: '14px', marginBottom: '24px' }}>Log of autonomous AI actions executed on your devices.</p>
         
         <div style={{ background: '#18181b', border: '1px solid #27272a', borderRadius: '12px', padding: '16px', marginBottom: '24px', maxHeight: '300px', overflowY: 'auto' }}>
-          {[
-            { id: 1, time: '2 mins ago', device: 'pc_windows_host', action: 'Opened Chrome' },
-            { id: 2, time: '15 mins ago', device: 'phone_android_node', action: 'Tapped Settings' },
-            { id: 3, time: '1 hour ago', device: 'pc_windows_host', action: 'Typed document' },
-          ].map((item) => (
-            <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid #27272a' }}>
-              <div>
-                <div style={{ fontSize: '14px', color: '#e4e4e7' }}>{item.action}</div>
-                <div style={{ fontSize: '11px', color: '#60a5fa' }}>{item.device}</div>
+          {usageHistory.length === 0 ? (
+            <div style={{ color: '#71717a', fontSize: '14px', textAlign: 'center', padding: '20px 0' }}>No history found.</div>
+          ) : (
+            usageHistory.map((item) => (
+              <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid #27272a' }}>
+                <div>
+                  <div style={{ fontSize: '14px', color: '#e4e4e7' }}>{item.action}</div>
+                  <div style={{ fontSize: '11px', color: '#60a5fa' }}>{item.device}</div>
+                </div>
+                <div style={{ fontSize: '12px', color: '#71717a' }}>{item.time}</div>
               </div>
-              <div style={{ fontSize: '12px', color: '#71717a' }}>{item.time}</div>
-            </div>
-          ))}
+            ))
+          )}
         </div>
         
         <button style={{...styles.button, background: '#27272a', color: '#fff'}} onClick={() => setCurrentView('chat')}>Back to Dashboard</button>
