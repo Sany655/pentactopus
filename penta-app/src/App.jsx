@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import MarkdownRenderer from './components/MarkdownRenderer';
 
 const PROVIDER_INFO = {
   groq: {
@@ -199,6 +200,7 @@ export default function App() {
   const viewportRef = useRef(null);
   const videoRef = useRef(null);
   const chatEndRef = useRef(null);
+  const textareaRef = useRef(null);
   
   // Mobile / Touch State
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
@@ -377,10 +379,31 @@ export default function App() {
     }
   };
 
+  const handleTextareaChange = (e) => {
+    setAiGoal(e.target.value);
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = `${Math.min(160, Math.max(44, textareaRef.current.scrollHeight))}px`;
+    }
+  };
+
+  const handleTextareaKeyDown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      executeAiDirective();
+      if (textareaRef.current) {
+        textareaRef.current.style.height = '44px';
+      }
+    }
+  };
+
   const executeAiDirective = async (customPrompt) => {
     const goalText = typeof customPrompt === 'string' ? customPrompt.trim() : aiGoal.trim();
     if (!goalText || isExecuting) return;
     setAiGoal('');
+    if (textareaRef.current) {
+      textareaRef.current.style.height = '44px';
+    }
     
     const userMsgId = Date.now();
     const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -783,7 +806,7 @@ export default function App() {
     chatContainer: { flex: 1, display: 'flex', flexDirection: 'column', maxWidth: '920px', margin: '0 auto', width: '100%', padding: '20px 24px', boxSizing: 'border-box', height: '100%', overflow: 'hidden' },
     messageList: { flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '22px', paddingBottom: '24px', paddingRight: '4px' },
     bubbleUser: { alignSelf: 'flex-end', background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)', color: '#ffffff', padding: '12px 18px', borderRadius: '18px 18px 4px 18px', maxWidth: '80%', boxShadow: '0 4px 14px rgba(37, 99, 235, 0.25)', fontSize: '14px', lineHeight: '1.55', wordBreak: 'break-word' },
-    bubbleAgent: { alignSelf: 'flex-start', background: '#141418', border: '1px solid #27272a', color: '#f4f4f5', padding: '16px 20px', borderRadius: '18px 18px 18px 4px', width: '100%', boxSizing: 'border-box', fontSize: '14px', lineHeight: '1.65', boxShadow: '0 8px 24px rgba(0,0,0,0.3)', wordBreak: 'break-word', whiteSpace: 'pre-wrap', fontFamily: 'Inter, system-ui, -apple-system, sans-serif' },
+    bubbleAgent: { alignSelf: 'flex-start', background: '#121217', border: '1px solid rgba(255, 255, 255, 0.08)', color: '#f4f4f5', padding: '18px 22px', borderRadius: '14px', width: '100%', boxSizing: 'border-box', fontSize: '14px', lineHeight: '1.7', boxShadow: '0 8px 24px rgba(0,0,0,0.25)', wordBreak: 'break-word', fontFamily: 'Inter, system-ui, -apple-system, sans-serif' },
     inputBar: { display: 'flex', flexDirection: 'column', gap: '8px', background: '#121217', padding: '12px 16px', borderRadius: '16px', border: '1px solid #27272a', boxShadow: '0 10px 30px rgba(0,0,0,0.3)' },
     viewportContainer: { flex: 1, display: 'flex', flexDirection: 'column', padding: '24px', background: '#09090b' },
     canvasWrapper: { flex: 1, background: '#000', borderRadius: '12px', border: '1px solid #27272a', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' },
@@ -1116,7 +1139,7 @@ export default function App() {
                     {msg.time && <span>• {msg.time}</span>}
                   </div>
                   <div style={styles.bubbleUser}>
-                    {cleanText}
+                    <MarkdownRenderer content={cleanText} />
                   </div>
                 </div>
               );
@@ -1200,8 +1223,8 @@ export default function App() {
                 )}
 
                 {/* Primary Response Bubble */}
-                <div style={{ ...styles.bubbleAgent, borderColor: msg.isError ? '#ef4444' : '#27272a' }}>
-                  {cleanText}
+                <div style={{ ...styles.bubbleAgent, borderColor: msg.isError ? '#ef4444' : 'rgba(255, 255, 255, 0.08)' }}>
+                  <MarkdownRenderer content={cleanText} />
                 </div>
 
                 {/* Bubble Action Footer */}
@@ -1277,8 +1300,10 @@ export default function App() {
         
         {/* Floating Input Bar */}
         <div style={styles.inputBar}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <input 
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+            <textarea 
+              ref={textareaRef}
+              rows={1}
               style={{ 
                 flex: 1, 
                 background: 'transparent', 
@@ -1286,41 +1311,54 @@ export default function App() {
                 outline: 'none', 
                 color: '#fff', 
                 fontSize: '14px',
-                padding: '4px 0'
+                lineHeight: '1.5',
+                fontFamily: 'Inter, system-ui, -apple-system, sans-serif',
+                resize: 'none',
+                minHeight: '44px',
+                maxHeight: '160px',
+                padding: '4px 0',
+                boxSizing: 'border-box'
               }}
-              type="text" 
-              placeholder={`Instruct Pentactopus to perform any action on ${selectedDevice === 'pc' ? 'Windows Desktop' : 'Android Phone'}...`}
+              placeholder={`Instruct Pentactopus or describe any task on ${selectedDevice === 'pc' ? 'Windows Desktop' : 'Android Phone'} (e.g. build an API, search the web, open software)...`}
               value={aiGoal}
-              onChange={e => setAiGoal(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); executeAiDirective(); } }}
+              onChange={handleTextareaChange}
+              onKeyDown={handleTextareaKeyDown}
               disabled={isExecuting}
             />
             <button 
               style={{ 
-                background: isExecuting ? '#27272a' : 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)', 
-                color: '#fff', 
+                background: isExecuting || !aiGoal.trim() ? '#27272a' : 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)', 
+                color: isExecuting || !aiGoal.trim() ? '#71717a' : '#fff', 
                 border: 'none', 
                 borderRadius: '10px', 
-                padding: '10px 20px', 
+                padding: '10px 18px', 
                 fontSize: '13px', 
                 fontWeight: '600', 
-                cursor: isExecuting ? 'not-allowed' : 'pointer',
+                cursor: isExecuting || !aiGoal.trim() ? 'not-allowed' : 'pointer',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '6px',
-                boxShadow: isExecuting ? 'none' : '0 4px 14px rgba(37, 99, 235, 0.4)',
-                transition: 'all 0.2s'
+                boxShadow: isExecuting || !aiGoal.trim() ? 'none' : '0 4px 14px rgba(37, 99, 235, 0.4)',
+                transition: 'all 0.2s',
+                marginTop: '2px'
               }}
               onClick={() => executeAiDirective()}
-              disabled={isExecuting}
+              disabled={isExecuting || !aiGoal.trim()}
             >
               <span>{isExecuting ? 'Running...' : 'Send'}</span>
               <span>{!isExecuting && '➔'}</span>
             </button>
           </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px', color: '#52525b', paddingLeft: '2px', paddingRight: '2px' }}>
-            <span>Target: <strong style={{ color: '#94a3b8' }}>{selectedDevice === 'pc' ? 'Windows Host (Apps, Chrome, Win32)' : 'Android Node (ADB)'}</strong></span>
-            <span>Press <kbd style={{ background: '#18181b', padding: '1px 4px', borderRadius: '3px', border: '1px solid #27272a' }}>Enter ↵</kbd> to send</span>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px', color: '#52525b', paddingLeft: '2px', paddingRight: '2px', paddingTop: '4px', borderTop: '1px solid rgba(255,255,255,0.04)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'rgba(255,255,255,0.04)', padding: '2px 8px', borderRadius: '4px', color: '#94a3b8' }}>
+                <span>{selectedDevice === 'pc' ? '🖥️' : '📱'}</span>
+                <span>{selectedDevice === 'pc' ? 'Windows Host Agent' : 'Android Node Agent'}</span>
+              </span>
+              <span style={{ color: '#71717a' }}>•</span>
+              <span style={{ color: '#71717a' }}>{agentAccessLevel === 'full' ? 'Full Control (Click/Type/Launch)' : 'Read-Only (Analysis)'}</span>
+            </div>
+            <span>Press <kbd style={{ background: '#18181b', padding: '1px 5px', borderRadius: '4px', border: '1px solid #27272a', color: '#a1a1aa' }}>Enter ↵</kbd> to send • <kbd style={{ background: '#18181b', padding: '1px 5px', borderRadius: '4px', border: '1px solid #27272a', color: '#a1a1aa' }}>Shift+Enter</kbd> for newline</span>
           </div>
         </div>
       </div>
