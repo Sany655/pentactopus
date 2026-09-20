@@ -49,8 +49,8 @@ PROVIDER_REGISTRY = {
         "multimodal": False
     },
     "groq": {
-        "class": lambda m, k: OpenAICompatibleProvider(flavor="groq", model_name=m or "llama-3.3-70b-versatile", api_key=k),
-        "default_model": "llama-3.3-70b-versatile",
+        "class": lambda m, k: OpenAICompatibleProvider(flavor="groq", model_name=m or "openai/gpt-oss-120b", api_key=k),
+        "default_model": "openai/gpt-oss-120b",
         "env_key": "GROQ_API_KEY",
         "multimodal": False
     },
@@ -119,7 +119,7 @@ def get_model_provider(
         target_model = meta["default_model"]
     elif model_name and "claude" in model_name.lower() and name not in ("anthropic", "openrouter"):
         target_model = meta["default_model"]
-    elif model_name and "gpt" in model_name.lower() and name not in ("openai", "openrouter"):
+    elif model_name and any(p in model_name.lower() for p in ["gpt-4", "gpt-3.5", "o1-", "o3-"]) and name not in ("openai", "openrouter"):
         target_model = meta["default_model"]
     elif model_name and "llama" in model_name.lower() and name not in ("groq", "ollama", "openrouter"):
         target_model = meta["default_model"]

@@ -53,9 +53,18 @@ ENV_KEY_MAP = {
 DEFAULT_MODEL_MAP = {
     "openai": "gpt-4o-mini",
     "deepseek": "deepseek-chat",
-    "groq": "llama-3.3-70b-versatile",
+    "groq": "openai/gpt-oss-120b",
     "openrouter": "google/gemini-2.5-flash",
 }
+
+GROQ_FALLBACK_MODELS = [
+    "openai/gpt-oss-120b",
+    "openai/gpt-oss-20b",
+    "qwen/qwen3.8-27b",
+    "groq/compound-mini",
+    "llama-3.3-70b-versatile",
+    "llama-3.1-8b-instant"
+]
 
 class OpenAICompatibleProvider(BaseModelProvider):
     def __init__(
@@ -142,6 +151,8 @@ class OpenAICompatibleProvider(BaseModelProvider):
             with urllib.request.urlopen(req, timeout=35) as resp:
                 raw_resp = json.loads(resp.read().decode("utf-8"))
         except urllib.error.HTTPError as e:
+            body = ""
+            err_msg = ""
             try:
                 body = e.read().decode("utf-8")
                 err_data = json.loads(body)
@@ -150,11 +161,31 @@ class OpenAICompatibleProvider(BaseModelProvider):
                     or err_data.get("message")
                     or body
                 )
-                raise ValueError(f"{self.flavor.capitalize()} API Error ({e.code}): {err_msg}")
-            except Exception as parse_err:
-                if isinstance(parse_err, ValueError):
-                    raise parse_err
-                raise ValueError(f"{self.flavor.capitalize()} HTTP Error {e.code}: {e.reason}")
+            except Exception:
+                err_msg = str(e)
+
+            # Auto-recovery for Groq if requested model is unavailable / 404
+            if self.flavor == "groq" and e.code == 404:
+                for alt_model in GROQ_FALLBACK_MODELS:
+                    if alt_model == self.model_name:
+                        continue
+                    try:
+                        payload["model"] = alt_model
+                        retry_req = urllib.request.Request(
+                            self.endpoint,
+                            data=json.dumps(payload).encode("utf-8"),
+                            headers=headers,
+                            method="POST"
+                        )
+                        with urllib.request.urlopen(retry_req, timeout=25) as alt_resp:
+                            raw_resp = json.loads(alt_resp.read().decode("utf-8"))
+                            self.model_name = alt_model
+                            text = raw_resp["choices"][0]["message"]["content"].strip()
+                            return self._extract_json(text)
+                    except Exception:
+                        continue
+
+            raise ValueError(f"{self.flavor.capitalize()} API Error ({e.code}): {err_msg}")
         except urllib.error.URLError as e:
             raise ValueError(f"Failed to connect to {self.flavor} at {self.endpoint}: {e.reason}")
 

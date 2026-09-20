@@ -2,12 +2,12 @@ import React, { useState, useEffect, useRef } from 'react';
 
 const PROVIDER_INFO = {
   groq: {
-    name: 'Groq (Llama 3.3)',
-    model: 'llama-3.3-70b-versatile',
+    name: 'Groq (High Speed)',
+    model: 'openai/gpt-oss-120b',
     keyUrl: 'https://console.groq.com/keys',
     label: 'console.groq.com/keys',
     buttonText: 'Get Free Groq Key',
-    description: 'Ultra-fast Llama 3.3 70B inference with high free-tier rate limits.'
+    description: 'Ultra-fast inference (GPT-OSS 120B / Qwen 27B / Llama 3) with high free-tier rate limits.'
   },
   gemini: {
     name: 'Google Gemini',
