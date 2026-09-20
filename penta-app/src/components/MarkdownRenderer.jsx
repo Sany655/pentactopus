@@ -1,7 +1,103 @@
 import React, { useState } from 'react';
 
+const KEYWORDS = new Set([
+  'class', 'def', 'async', 'await', 'return', 'import', 'from', 'if', 'else', 'elif',
+  'try', 'except', 'finally', 'with', 'as', 'for', 'in', 'while', 'break', 'continue',
+  'pass', 'raise', 'yield', 'lambda', 'assert', 'const', 'let', 'var', 'function',
+  'new', 'export', 'default', 'extends', 'super', 'this', 'throw', 'catch', 'typeof',
+  'instanceof', 'void', 'delete', 'switch', 'case', 'sudo', 'pip', 'npm', 'uvicorn', 'python'
+]);
+
+const TYPES = new Set([
+  'BaseModel', 'Prompt', 'FastAPI', 'None', 'True', 'False', 'self', 'str', 'int',
+  'float', 'bool', 'dict', 'list', 'set', 'tuple', 'Promise', 'Response', 'Request',
+  'true', 'false', 'null', 'undefined', 'object', 'string', 'number', 'boolean'
+]);
+
+function highlightCodeLine(line) {
+  const parts = [];
+  const regex = /(#.*$|\/\/.*$|"[^"]*"|'[^']*'|`[^`]*`|@[a-zA-Z0-9_.]+|\b\d+(?:\.\d+)?\b|\b[a-zA-Z_][a-zA-Z0-9_]*\b|[^"'\`\s\w]+|\s+)/g;
+  let match;
+  let keyIdx = 0;
+
+  while ((match = regex.exec(line)) !== null) {
+    const val = match[0];
+    keyIdx++;
+
+    if (val.startsWith('#') || val.startsWith('//')) {
+      parts.push(
+        <span key={keyIdx} style={{ color: '#71717a', fontStyle: 'italic' }}>
+          {val}
+        </span>
+      );
+    } else if (val.startsWith('"') || val.startsWith("'") || val.startsWith('`')) {
+      parts.push(
+        <span key={keyIdx} style={{ color: '#34d399' }}>
+          {val}
+        </span>
+      );
+    } else if (val.startsWith('@')) {
+      parts.push(
+        <span key={keyIdx} style={{ color: '#38bdf8', fontWeight: '500' }}>
+          {val}
+        </span>
+      );
+    } else if (KEYWORDS.has(val)) {
+      parts.push(
+        <span key={keyIdx} style={{ color: '#c084fc', fontWeight: '600' }}>
+          {val}
+        </span>
+      );
+    } else if (TYPES.has(val)) {
+      parts.push(
+        <span key={keyIdx} style={{ color: '#60a5fa', fontWeight: '500' }}>
+          {val}
+        </span>
+      );
+    } else if (/^\d+(?:\.\d+)?$/.test(val)) {
+      parts.push(
+        <span key={keyIdx} style={{ color: '#fb923c' }}>
+          {val}
+        </span>
+      );
+    } else {
+      parts.push(
+        <span key={keyIdx} style={{ color: '#e2e8f0' }}>
+          {val}
+        </span>
+      );
+    }
+  }
+
+  return parts.length > 0 ? parts : line;
+}
+
+const LANG_ICONS = {
+  python: '🐍',
+  py: '🐍',
+  javascript: '📜',
+  js: '📜',
+  jsx: '⚛️',
+  typescript: '🔷',
+  ts: '🔷',
+  tsx: '⚛️',
+  bash: '⚡',
+  sh: '⚡',
+  shell: '⚡',
+  powershell: '💻',
+  json: '📦',
+  html: '🌐',
+  css: '🎨',
+  sql: '🗄️',
+  yaml: '⚙️',
+  yml: '⚙️'
+};
+
 export function CodeBlock({ code, language }) {
   const [copied, setCopied] = useState(false);
+  const cleanLang = (language || 'code').toLowerCase().trim();
+  const icon = LANG_ICONS[cleanLang] || '📄';
+  const lines = code.split('\n');
 
   const handleCopy = (e) => {
     e.stopPropagation();
@@ -13,36 +109,60 @@ export function CodeBlock({ code, language }) {
   };
 
   return (
-    <div style={{ margin: '14px 0', borderRadius: '8px', overflow: 'hidden', border: '1px solid #27272a', background: '#0a0a0f' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 12px', background: '#121217', borderBottom: '1px solid #27272a', fontSize: '11px', color: '#94a3b8' }}>
-        <span style={{ fontFamily: 'Consolas, monospace', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '600' }}>
-          {language || 'code'}
-        </span>
+    <div style={{ margin: '14px 0', borderRadius: '10px', overflow: 'hidden', border: '1px solid rgba(255, 255, 255, 0.1)', background: '#09090d', boxShadow: '0 8px 24px rgba(0, 0, 0, 0.4)' }}>
+      {/* Code Header Bar */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 14px', background: '#121218', borderBottom: '1px solid rgba(255, 255, 255, 0.08)', fontSize: '11px', color: '#94a3b8' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <span>{icon}</span>
+          <span style={{ fontFamily: 'Consolas, Monaco, monospace', textTransform: 'uppercase', letterSpacing: '0.6px', fontWeight: '600', color: '#cbd5e1' }}>
+            {cleanLang}
+          </span>
+          <span style={{ fontSize: '10px', color: '#52525b' }}>• {lines.length} {lines.length === 1 ? 'line' : 'lines'}</span>
+        </div>
         <button
           onClick={handleCopy}
           style={{
-            background: 'transparent',
-            border: 'none',
-            color: copied ? '#10b981' : '#a1a1aa',
+            background: copied ? 'rgba(16, 185, 129, 0.15)' : 'rgba(255, 255, 255, 0.06)',
+            border: `1px solid ${copied ? 'rgba(16, 185, 129, 0.4)' : 'rgba(255, 255, 255, 0.1)'}`,
+            color: copied ? '#34d399' : '#e4e4e7',
             fontSize: '11px',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
-            gap: '4px',
-            padding: '2px 6px',
-            borderRadius: '4px',
-            transition: 'color 0.15s'
+            gap: '5px',
+            padding: '3px 10px',
+            borderRadius: '6px',
+            fontWeight: '500',
+            transition: 'all 0.15s'
           }}
-          onMouseEnter={e => { if (!copied) e.currentTarget.style.color = '#fff'; }}
-          onMouseLeave={e => { if (!copied) e.currentTarget.style.color = '#a1a1aa'; }}
+          onMouseEnter={e => { if (!copied) e.currentTarget.style.background = 'rgba(255, 255, 255, 0.12)'; }}
+          onMouseLeave={e => { if (!copied) e.currentTarget.style.background = 'rgba(255, 255, 255, 0.06)'; }}
         >
           <span>{copied ? '✓' : '📋'}</span>
-          <span>{copied ? 'Copied to clipboard' : 'Copy code'}</span>
+          <span>{copied ? 'Copied!' : 'Copy Code'}</span>
         </button>
       </div>
-      <pre style={{ margin: 0, padding: '14px 16px', overflowX: 'auto', fontFamily: 'Consolas, Monaco, "Courier New", monospace', fontSize: '13px', lineHeight: '1.6', color: '#e2e8f0', background: '#09090d' }}>
-        <code>{code}</code>
-      </pre>
+
+      {/* Code Body with Optional Line Numbers */}
+      <div style={{ display: 'flex', overflowX: 'auto', padding: '12px 0', background: '#09090d', fontSize: '13px', lineHeight: '1.65', fontFamily: 'Consolas, Monaco, "Courier New", monospace' }}>
+        {/* Line Numbers */}
+        <div style={{ userSelect: 'none', padding: '0 12px 0 14px', textAlign: 'right', color: '#52525b', fontSize: '12px', borderRight: '1px solid rgba(255, 255, 255, 0.06)' }}>
+          {lines.map((_, idx) => (
+            <div key={idx}>{idx + 1}</div>
+          ))}
+        </div>
+
+        {/* Code Content */}
+        <pre style={{ margin: 0, padding: '0 16px', overflowX: 'auto', flex: 1, color: '#e2e8f0', background: 'transparent' }}>
+          <code>
+            {lines.map((line, idx) => (
+              <div key={idx} style={{ minHeight: '21px' }}>
+                {highlightCodeLine(line)}
+              </div>
+            ))}
+          </code>
+        </pre>
+      </div>
     </div>
   );
 }
@@ -50,22 +170,25 @@ export function CodeBlock({ code, language }) {
 export default function MarkdownRenderer({ content }) {
   if (!content) return null;
 
+  // Normalize Windows CRLF to standard LF
+  const normalized = String(content).replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+
   // Split content by code fences ```(lang)?\n...```
   const parts = [];
-  const regex = /```([a-zA-Z0-9_-]*)\n([\s\S]*?)```/g;
+  const regex = /```([a-zA-Z0-9_#-]*)[^\n]*\n([\s\S]*?)```/g;
   let lastIndex = 0;
   let match;
 
-  while ((match = regex.exec(content)) !== null) {
+  while ((match = regex.exec(normalized)) !== null) {
     if (match.index > lastIndex) {
-      parts.push({ type: 'markdown', text: content.substring(lastIndex, match.index) });
+      parts.push({ type: 'markdown', text: normalized.substring(lastIndex, match.index) });
     }
     parts.push({ type: 'code', language: match[1] || '', code: match[2].trimEnd() });
     lastIndex = regex.lastIndex;
   }
 
-  if (lastIndex < content.length) {
-    parts.push({ type: 'markdown', text: content.substring(lastIndex) });
+  if (lastIndex < normalized.length) {
+    parts.push({ type: 'markdown', text: normalized.substring(lastIndex) });
   }
 
   const renderInline = (str) => {
@@ -196,10 +319,10 @@ export default function MarkdownRenderer({ content }) {
                 </blockquote>
               );
             } else if (trimmed === '') {
-              // paragraph break
+              // blank line
             } else {
               elements.push(
-                <p key={lIdx} style={{ margin: '8px 0' }}>
+                <p key={lIdx} style={{ margin: '6px 0' }}>
                   {renderInline(trimmed)}
                 </p>
               );

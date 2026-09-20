@@ -134,6 +134,8 @@ class PCAgent:
             cmd = action_data.get("command", "")
             if cmd:
                 res = self.controller.run_command(cmd)
+                action_data["output"] = res.get("output", "")
+                action_data["success"] = res.get("success", False)
                 logger.info(f"[PC AGENT] Command result: {res}")
         elif act == "wait":
             secs = min(5, action_data.get("seconds", 1))

@@ -96,6 +96,23 @@ const formatStepParams = (act = {}) => {
 const parseMessageContent = (msg) => {
   let text = msg.text || '';
   let steps = msg.steps && Array.isArray(msg.steps) ? [...msg.steps] : [];
+  let thought = msg.thought || '';
+
+  // Extract <thought> tags if present
+  if (typeof text === 'string') {
+    const thoughtTagMatch = text.match(/<thought>([\s\S]*?)<\/thought>/i);
+    if (thoughtTagMatch) {
+      thought = thoughtTagMatch[1].trim();
+      text = text.replace(/<thought>[\s\S]*?<\/thought>/i, '').trim();
+    }
+    
+    // Extract leading Thought: or Plan:
+    const thinkPrefixMatch = text.match(/^(?:Thought|Thinking Process|Plan):\s*([\s\S]*?)(?:\n\n|\r\n\r\n)([\s\S]*)$/i);
+    if (thinkPrefixMatch && !thought) {
+      thought = thinkPrefixMatch[1].trim();
+      text = thinkPrefixMatch[2].trim();
+    }
+  }
 
   if (typeof text === 'string' && (text.includes('[Step ') || text.includes('[COMPLETION]'))) {
     const completionIdx = text.indexOf('[COMPLETION]');
@@ -132,8 +149,24 @@ const parseMessageContent = (msg) => {
     text = finalPart || (steps.length > 0 ? 'Workflow executed successfully.' : text);
   }
 
-  return { text, steps };
+  return { text, steps, thought };
 };
+
+const SLASH_COMMANDS = [
+  { cmd: '/plan', desc: 'Create a step-by-step implementation plan before executing', example: '/plan Build a FastAPI server' },
+  { cmd: '/code', desc: 'Pair programmer mode: write complete production code', example: '/code Write an authentication middleware' },
+  { cmd: '/run', desc: 'Execute a terminal PowerShell / shell command on Windows', example: '/run tasklist' },
+  { cmd: '/app', desc: 'Launch desktop software (Chrome, VS Code, Notepad, Calc)', example: '/app chrome' },
+  { cmd: '/clear', desc: 'Clear conversation history and reset session', example: '/clear' }
+];
+
+const PROMPT_CHIPS = [
+  { icon: '📋', label: 'Plan Task', prefix: '/plan ' },
+  { icon: '💻', label: 'Run Command', prefix: '/run ' },
+  { icon: '🚀', label: 'Launch App', prefix: '/app ' },
+  { icon: '🐍', label: 'Write Code', prefix: '/code ' },
+  { icon: '🔍', label: 'Diagnostics', prompt: 'Check Windows system performance and open Task Manager' }
+];
 
 const SUGGESTIONS = [
   { icon: '🔍', title: 'Web Research', prompt: 'Open Chrome and search what is Midek' },
@@ -172,7 +205,12 @@ export default function App() {
   const [agentAccessLevel, setAgentAccessLevel] = useState('full'); // 'read_only' or 'full'
   const [showVisionPreview, setShowVisionPreview] = useState(false);
   const [expandedSteps, setExpandedSteps] = useState({});
+  const [expandedThoughts, setExpandedThoughts] = useState({});
+  const [expandedToolOutputs, setExpandedToolOutputs] = useState({});
   const [copiedId, setCopiedId] = useState(null);
+  const [agentMode, setAgentMode] = useState('agent'); // 'agent' (OS) or 'pair_programmer' (Code)
+  const [showModelDropdown, setShowModelDropdown] = useState(false);
+  const [slashMenuOpen, setSlashMenuOpen] = useState(false);
   
   // New States
   const [llmProvider, setLlmProvider] = useState(localStorage.getItem('penta_llm_provider') || 'groq');
@@ -380,7 +418,9 @@ export default function App() {
   };
 
   const handleTextareaChange = (e) => {
-    setAiGoal(e.target.value);
+    const val = e.target.value;
+    setAiGoal(val);
+    setSlashMenuOpen(val.startsWith('/') && !val.includes(' '));
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
       textareaRef.current.style.height = `${Math.min(160, Math.max(44, textareaRef.current.scrollHeight))}px`;
@@ -397,9 +437,45 @@ export default function App() {
     }
   };
 
+  const toggleThought = (id) => {
+    setExpandedThoughts(prev => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const toggleToolOutput = (key) => {
+    setExpandedToolOutputs(prev => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const selectModelQuick = (provKey) => {
+    setLlmProvider(provKey);
+    localStorage.setItem('penta_llm_provider', provKey);
+    setShowModelDropdown(false);
+  };
+
   const executeAiDirective = async (customPrompt) => {
-    const goalText = typeof customPrompt === 'string' ? customPrompt.trim() : aiGoal.trim();
+    let goalText = typeof customPrompt === 'string' ? customPrompt.trim() : aiGoal.trim();
     if (!goalText || isExecuting) return;
+    
+    setSlashMenuOpen(false);
+
+    if (goalText === '/clear') {
+      setChatHistory([]);
+      setAiGoal('');
+      if (textareaRef.current) textareaRef.current.style.height = '44px';
+      return;
+    }
+
+    if (goalText.startsWith('/plan ')) {
+      goalText = `[PLANNING & ARCHITECTURE TASK] Create a detailed implementation plan with steps and architecture for: ${goalText.slice(6).trim()}`;
+    } else if (goalText.startsWith('/code ')) {
+      goalText = `[PAIR PROGRAMMER CODE TASK] Write complete, robust, production-grade code for: ${goalText.slice(6).trim()}`;
+    } else if (goalText.startsWith('/run ')) {
+      goalText = `[TERMINAL SHELL ACTION] Run command: ${goalText.slice(5).trim()}`;
+    } else if (goalText.startsWith('/app ')) {
+      goalText = `Launch application: ${goalText.slice(5).trim()}`;
+    } else if (agentMode === 'pair_programmer' && !goalText.startsWith('[')) {
+      goalText = `[PAIR PROGRAMMER / CHAT ASSISTANT] ${goalText}`;
+    }
+
     setAiGoal('');
     if (textareaRef.current) {
       textareaRef.current.style.height = '44px';
@@ -1051,21 +1127,160 @@ export default function App() {
       {/* Main Chat Area */}
       <div style={styles.chatContainer}>
         {/* Top Header Bar */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '14px', borderBottom: '1px solid rgba(255,255,255,0.06)', marginBottom: '14px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ fontSize: '16px' }}>{selectedDevice === 'pc' ? '🖥️' : '📱'}</span>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '14px', borderBottom: '1px solid rgba(255,255,255,0.08)', marginBottom: '14px', flexWrap: 'wrap', gap: '10px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span style={{ fontSize: '18px' }}>{selectedDevice === 'pc' ? '🖥️' : '📱'}</span>
             <div>
-              <div style={{ fontSize: '14px', fontWeight: '600', color: '#fff' }}>
-                {selectedDevice === 'pc' ? 'Windows Host Agent' : 'Android Node Agent'}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '14px', fontWeight: '600', color: '#fff' }}>
+                  {selectedDevice === 'pc' ? 'Windows Host Agent' : 'Android Node Agent'}
+                </span>
+                {/* Agent Mode Switcher Pill */}
+                <div style={{ display: 'inline-flex', background: 'rgba(255,255,255,0.06)', borderRadius: '6px', padding: '2px', border: '1px solid rgba(255,255,255,0.08)' }}>
+                  <button
+                    onClick={() => setAgentMode('agent')}
+                    style={{
+                      background: agentMode === 'agent' ? 'rgba(59, 130, 246, 0.25)' : 'transparent',
+                      color: agentMode === 'agent' ? '#60a5fa' : '#71717a',
+                      border: 'none',
+                      borderRadius: '4px',
+                      padding: '2px 8px',
+                      fontSize: '11px',
+                      fontWeight: '500',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s'
+                    }}
+                    title="Autonomous Computer-Use: Clicks, keystrokes, and desktop automation"
+                  >
+                    🤖 OS Agent
+                  </button>
+                  <button
+                    onClick={() => setAgentMode('pair_programmer')}
+                    style={{
+                      background: agentMode === 'pair_programmer' ? 'rgba(168, 85, 247, 0.25)' : 'transparent',
+                      color: agentMode === 'pair_programmer' ? '#c084fc' : '#71717a',
+                      border: 'none',
+                      borderRadius: '4px',
+                      padding: '2px 8px',
+                      fontSize: '11px',
+                      fontWeight: '500',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s'
+                    }}
+                    title="Deep Pair Programmer: Code architecture, terminal commands, and scripts"
+                  >
+                    💡 Pair Programmer
+                  </button>
+                </div>
               </div>
-              <div style={{ fontSize: '11px', color: '#71717a' }}>
-                {selectedDevice === 'pc' ? 'Direct OS automation • Apps, Browser & System' : 'ADB node automation • Mobile apps & UI'}
+              <div style={{ fontSize: '11px', color: '#71717a', marginTop: '2px' }}>
+                {agentMode === 'agent' 
+                  ? (selectedDevice === 'pc' ? 'Direct OS automation • Apps, Browser & System Clicks' : 'ADB node automation • Touch & Mobile UI')
+                  : 'High-intelligence coding, architectural planning & terminal command execution'}
               </div>
             </div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981' }}></span>
-            <span style={{ fontSize: '12px', color: '#10b981', fontWeight: '500' }}>Ready</span>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            {/* Quick Brain / Model Dropdown */}
+            <div style={{ position: 'relative' }}>
+              <button
+                onClick={() => setShowModelDropdown(prev => !prev)}
+                style={{
+                  background: 'rgba(255,255,255,0.06)',
+                  border: '1px solid rgba(255,255,255,0.12)',
+                  borderRadius: '8px',
+                  padding: '5px 12px',
+                  color: '#e4e4e7',
+                  fontSize: '12px',
+                  fontWeight: '500',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  transition: 'all 0.15s'
+                }}
+                onMouseEnter={e => e.currentTarget.style.borderColor = '#3b82f6'}
+                onMouseLeave={e => e.currentTarget.style.borderColor = 'rgba(255,255,255,0.12)'}
+              >
+                <span style={{ color: '#60a5fa' }}>⚡</span>
+                <span style={{ maxWidth: '140px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {PROVIDER_INFO[llmProvider]?.name || 'Groq'}
+                </span>
+                <span style={{ fontSize: '10px', color: '#71717a' }}>{showModelDropdown ? '▲' : '▼'}</span>
+              </button>
+
+              {showModelDropdown && (
+                <div style={{
+                  position: 'absolute',
+                  top: '100%',
+                  right: 0,
+                  marginTop: '6px',
+                  background: '#121217',
+                  border: '1px solid rgba(255,255,255,0.15)',
+                  borderRadius: '10px',
+                  boxShadow: '0 12px 32px rgba(0,0,0,0.6)',
+                  zIndex: 100,
+                  minWidth: '240px',
+                  padding: '6px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '2px'
+                }}>
+                  <div style={{ padding: '6px 8px', fontSize: '10px', fontWeight: '600', color: '#71717a', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                    Switch Active Brain
+                  </div>
+                  {Object.entries(PROVIDER_INFO).map(([key, info]) => {
+                    const isSelected = llmProvider === key;
+                    return (
+                      <div
+                        key={key}
+                        onClick={() => selectModelQuick(key)}
+                        style={{
+                          padding: '8px 10px',
+                          borderRadius: '6px',
+                          cursor: 'pointer',
+                          background: isSelected ? 'rgba(59, 130, 246, 0.15)' : 'transparent',
+                          border: isSelected ? '1px solid rgba(59, 130, 246, 0.3)' : '1px solid transparent',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          transition: 'background 0.15s'
+                        }}
+                        onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; }}
+                        onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = 'transparent'; }}
+                      >
+                        <div>
+                          <div style={{ fontSize: '12px', fontWeight: '500', color: isSelected ? '#60a5fa' : '#f4f4f5' }}>
+                            {info.name}
+                          </div>
+                          <div style={{ fontSize: '10px', color: '#71717a', fontFamily: 'monospace' }}>
+                            {info.model}
+                          </div>
+                        </div>
+                        {isSelected && <span style={{ color: '#60a5fa', fontSize: '12px' }}>✓</span>}
+                      </div>
+                    );
+                  })}
+                  <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', marginTop: '4px', paddingTop: '4px' }}>
+                    <div
+                      onClick={() => { setShowModelDropdown(false); setCurrentView('model_config'); }}
+                      style={{ padding: '6px 10px', borderRadius: '6px', cursor: 'pointer', fontSize: '11px', color: '#60a5fa', display: 'flex', alignItems: 'center', gap: '6px' }}
+                      onMouseEnter={e => e.currentTarget.style.background = 'rgba(59, 130, 246, 0.08)'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                    >
+                      <span>🔑</span>
+                      <span>Manage API Keys & Settings ➔</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981' }}></span>
+              <span style={{ fontSize: '12px', color: '#10b981', fontWeight: '500' }}>Ready</span>
+            </div>
           </div>
         </div>
 
@@ -1081,7 +1296,7 @@ export default function App() {
                 How can I assist your {selectedDevice === 'pc' ? 'Windows Desktop' : 'Android Device'}?
               </h3>
               <p style={{ margin: '0 0 24px 0', fontSize: '13px', color: '#a1a1aa', maxWidth: '480px', lineHeight: '1.6' }}>
-                Pentactopus can launch applications, search the web, analyze active screens, type queries, and automate multi-step computer tasks.
+                Pentactopus can launch applications, write full codebases, execute terminal shell commands, analyze active screens, and automate complex tasks.
               </p>
               
               <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '10px', width: '100%', maxWidth: '620px' }}>
@@ -1127,8 +1342,9 @@ export default function App() {
           {chatHistory.map((msg, i) => {
             const isUser = msg.sender === 'user';
             const msgId = msg.id || i;
-            const { text: cleanText, steps } = parseMessageContent(msg);
+            const { text: cleanText, steps, thought } = parseMessageContent(msg);
             const isExpanded = !!expandedSteps[msgId];
+            const isThoughtExpanded = !!expandedThoughts[msgId];
             const isCopied = copiedId === msgId;
 
             if (isUser) {
@@ -1162,7 +1378,40 @@ export default function App() {
                   {msg.time && <span style={{ fontSize: '11px', color: '#52525b' }}>{msg.time}</span>}
                 </div>
 
-                {/* Collapsible Steps Trace (if any actions executed) */}
+                {/* Collapsible Thought / Reasoning Accordion (Antigravity Style) */}
+                {thought && (
+                  <div style={{ width: '100%', background: 'rgba(59, 130, 246, 0.03)', border: '1px solid rgba(59, 130, 246, 0.15)', borderRadius: '8px', overflow: 'hidden' }}>
+                    <div
+                      onClick={() => toggleThought(msgId)}
+                      style={{
+                        padding: '6px 12px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        cursor: 'pointer',
+                        fontSize: '11px',
+                        color: '#93c5fd',
+                        background: 'rgba(59, 130, 246, 0.06)',
+                        transition: 'background 0.15s'
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.background = 'rgba(59, 130, 246, 0.12)'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'rgba(59, 130, 246, 0.06)'}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span>💭</span>
+                        <span style={{ fontWeight: '600' }}>Thinking Process & Reasoning</span>
+                      </div>
+                      <span style={{ fontSize: '10px' }}>{isThoughtExpanded ? '▲ Hide' : '▼ Expand'}</span>
+                    </div>
+                    {isThoughtExpanded && (
+                      <div style={{ padding: '10px 14px', fontSize: '12px', color: '#cbd5e1', lineHeight: '1.6', borderTop: '1px solid rgba(59, 130, 246, 0.1)', background: '#0a0a0f' }}>
+                        <MarkdownRenderer content={thought} />
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Collapsible Tool Execution Trace Cards (Antigravity Style) */}
                 {steps.length > 0 && (
                   <div style={{ width: '100%', background: '#101014', border: '1px solid #27272a', borderRadius: '10px', overflow: 'hidden', margin: '2px 0 6px 0' }}>
                     <div 
@@ -1186,7 +1435,8 @@ export default function App() {
                         <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '18px', height: '18px', borderRadius: '50%', background: 'rgba(59, 130, 246, 0.2)', fontSize: '10px', fontWeight: 'bold' }}>
                           ⚡
                         </span>
-                        <span style={{ fontWeight: '600' }}>{steps.length} Agent Actions Executed</span>
+                        <span style={{ fontWeight: '600' }}>Tool Executions ({steps.length} Actions)</span>
+                        <span style={{ fontSize: '11px', color: '#10b981', background: 'rgba(16, 185, 129, 0.12)', padding: '1px 6px', borderRadius: '4px' }}>✓ Completed</span>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: '#60a5fa' }}>
                         <span>{isExpanded ? 'Hide Trace' : 'View Trace'}</span>
@@ -1195,24 +1445,44 @@ export default function App() {
                     </div>
 
                     {isExpanded && (
-                      <div style={{ padding: '8px 12px', display: 'flex', flexDirection: 'column', gap: '6px', background: '#0a0a0d', maxHeight: '240px', overflowY: 'auto' }}>
+                      <div style={{ padding: '8px 12px', display: 'flex', flexDirection: 'column', gap: '8px', background: '#0a0a0d', maxHeight: '320px', overflowY: 'auto' }}>
                         {steps.map((s, sIdx) => {
                           const act = s.action || {};
                           const actType = act.action || act.type || 'wait';
                           const meta = ACTION_META[actType] || { icon: '⚙️', label: actType, color: '#a1a1aa' };
                           const paramStr = formatStepParams(act);
+                          const stepKey = `${msgId}_step_${sIdx}`;
+                          const isOutputExpanded = !!expandedToolOutputs[stepKey];
+                          const hasOutput = act.output && typeof act.output === 'string' && act.output.trim().length > 0;
 
                           return (
-                            <div key={sIdx} style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '12px', padding: '4px 6px', borderRadius: '6px', background: 'rgba(255,255,255,0.02)' }}>
-                              <span style={{ fontSize: '10px', color: '#71717a', minWidth: '22px', fontWeight: '600' }}>#{s.step || sIdx + 1}</span>
-                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '2px 8px', borderRadius: '4px', background: 'rgba(255,255,255,0.05)', color: meta.color, fontSize: '11px', fontWeight: '500' }}>
-                                <span>{meta.icon}</span>
-                                <span>{meta.label}</span>
-                              </span>
-                              {paramStr && (
-                                <span style={{ fontFamily: 'monospace', fontSize: '11px', color: '#cbd5e1', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '420px' }}>
-                                  {paramStr}
-                                </span>
+                            <div key={sIdx} style={{ borderRadius: '6px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)', overflow: 'hidden' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 8px', fontSize: '12px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden' }}>
+                                  <span style={{ fontSize: '10px', color: '#71717a', minWidth: '22px', fontWeight: '600' }}>#{s.step || sIdx + 1}</span>
+                                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '2px 8px', borderRadius: '4px', background: 'rgba(255,255,255,0.05)', color: meta.color, fontSize: '11px', fontWeight: '500' }}>
+                                    <span>{meta.icon}</span>
+                                    <span>{meta.label}</span>
+                                  </span>
+                                  {paramStr && (
+                                    <span style={{ fontFamily: 'monospace', fontSize: '11px', color: '#cbd5e1', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '380px' }}>
+                                      {paramStr}
+                                    </span>
+                                  )}
+                                </div>
+                                {hasOutput && (
+                                  <button
+                                    onClick={() => toggleToolOutput(stepKey)}
+                                    style={{ background: 'transparent', border: 'none', color: '#60a5fa', fontSize: '10px', cursor: 'pointer', padding: '2px 6px' }}
+                                  >
+                                    {isOutputExpanded ? 'Hide stdout ▲' : 'stdout ▾'}
+                                  </button>
+                                )}
+                              </div>
+                              {hasOutput && isOutputExpanded && (
+                                <div style={{ padding: '8px 10px', background: '#050508', borderTop: '1px solid rgba(255,255,255,0.06)', fontFamily: 'monospace', fontSize: '11px', color: '#a7f3d0', maxHeight: '160px', overflowY: 'auto', whiteSpace: 'pre-wrap' }}>
+                                  {act.output}
+                                </div>
                               )}
                             </div>
                           );
@@ -1222,7 +1492,7 @@ export default function App() {
                   </div>
                 )}
 
-                {/* Primary Response Bubble */}
+                {/* Primary Response Bubble with Antigravity-Grade Markdown */}
                 <div style={{ ...styles.bubbleAgent, borderColor: msg.isError ? '#ef4444' : 'rgba(255, 255, 255, 0.08)' }}>
                   <MarkdownRenderer content={cleanText} />
                 </div>
@@ -1277,7 +1547,7 @@ export default function App() {
                   <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#a78bfa', display: 'inline-block', animation: 'pulse 1.2s infinite', animationDelay: '0.4s' }} />
                 </div>
                 <span style={{ fontSize: '13px', color: '#cbd5e1' }}>
-                  Analyzing desktop state and predicting autonomous computer actions...
+                  Analyzing {selectedDevice === 'pc' ? 'Windows' : 'Android'} desktop state and predicting autonomous computer actions...
                 </span>
               </div>
             </div>
@@ -1300,6 +1570,99 @@ export default function App() {
         
         {/* Floating Input Bar */}
         <div style={styles.inputBar}>
+          {/* Quick Slash Commands Suggestion Menu */}
+          {slashMenuOpen && (
+            <div style={{
+              background: '#14141a',
+              border: '1px solid rgba(255,255,255,0.12)',
+              borderRadius: '10px',
+              padding: '6px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '3px',
+              boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+              marginBottom: '4px'
+            }}>
+              <div style={{ fontSize: '10px', color: '#71717a', padding: '4px 8px', fontWeight: '600', textTransform: 'uppercase' }}>
+                Slash Commands (Antigravity Workflows)
+              </div>
+              {SLASH_COMMANDS.map((sc) => (
+                <div
+                  key={sc.cmd}
+                  onClick={() => {
+                    setAiGoal(sc.cmd + ' ');
+                    setSlashMenuOpen(false);
+                    if (textareaRef.current) textareaRef.current.focus();
+                  }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '6px 10px',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    background: 'transparent',
+                    transition: 'background 0.15s'
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = 'rgba(59, 130, 246, 0.1)'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontFamily: 'monospace', fontWeight: 'bold', color: '#60a5fa', fontSize: '12px' }}>{sc.cmd}</span>
+                    <span style={{ color: '#d4d4d8', fontSize: '12px' }}>{sc.desc}</span>
+                  </div>
+                  <span style={{ fontSize: '10px', color: '#52525b', fontFamily: 'monospace' }}>{sc.example}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Quick Prompt Chips (Antigravity Style) */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', overflowX: 'auto', paddingBottom: '4px' }}>
+            {PROMPT_CHIPS.map((chip, idx) => (
+              <button
+                key={idx}
+                onClick={() => {
+                  if (chip.prompt) {
+                    executeAiDirective(chip.prompt);
+                  } else if (chip.prefix) {
+                    setAiGoal(chip.prefix);
+                    if (textareaRef.current) {
+                      textareaRef.current.focus();
+                    }
+                  }
+                }}
+                style={{
+                  background: 'rgba(255,255,255,0.04)',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                  borderRadius: '6px',
+                  padding: '3px 9px',
+                  color: '#cbd5e1',
+                  fontSize: '11px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                  whiteSpace: 'nowrap',
+                  transition: 'all 0.15s'
+                }}
+                onMouseEnter={e => {
+                  e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
+                  e.currentTarget.style.borderColor = 'rgba(59, 130, 246, 0.4)';
+                  e.currentTarget.style.color = '#fff';
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.background = 'rgba(255,255,255,0.04)';
+                  e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
+                  e.currentTarget.style.color = '#cbd5e1';
+                }}
+              >
+                <span>{chip.icon}</span>
+                <span>{chip.label}</span>
+              </button>
+            ))}
+          </div>
+
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
             <textarea 
               ref={textareaRef}
@@ -1319,7 +1682,7 @@ export default function App() {
                 padding: '4px 0',
                 boxSizing: 'border-box'
               }}
-              placeholder={`Instruct Pentactopus or describe any task on ${selectedDevice === 'pc' ? 'Windows Desktop' : 'Android Phone'} (e.g. build an API, search the web, open software)...`}
+              placeholder={`Instruct Pentactopus or describe any task on ${selectedDevice === 'pc' ? 'Windows Desktop' : 'Android Phone'} (type / for commands like /plan, /code, /run)...`}
               value={aiGoal}
               onChange={handleTextareaChange}
               onKeyDown={handleTextareaKeyDown}
@@ -1356,7 +1719,9 @@ export default function App() {
                 <span>{selectedDevice === 'pc' ? 'Windows Host Agent' : 'Android Node Agent'}</span>
               </span>
               <span style={{ color: '#71717a' }}>•</span>
-              <span style={{ color: '#71717a' }}>{agentAccessLevel === 'full' ? 'Full Control (Click/Type/Launch)' : 'Read-Only (Analysis)'}</span>
+              <span style={{ color: '#71717a' }}>{agentAccessLevel === 'full' ? 'Full Control' : 'Read-Only'}</span>
+              <span style={{ color: '#71717a' }}>•</span>
+              <span style={{ color: '#60a5fa' }}>{agentMode === 'agent' ? 'OS Agent' : 'Pair Programmer'}</span>
             </div>
             <span>Press <kbd style={{ background: '#18181b', padding: '1px 5px', borderRadius: '4px', border: '1px solid #27272a', color: '#a1a1aa' }}>Enter ↵</kbd> to send • <kbd style={{ background: '#18181b', padding: '1px 5px', borderRadius: '4px', border: '1px solid #27272a', color: '#a1a1aa' }}>Shift+Enter</kbd> for newline</span>
           </div>
