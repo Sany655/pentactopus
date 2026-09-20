@@ -85,11 +85,36 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
         parsed = urllib.parse.urlparse(self.path)
         path = parsed.path
 
-        if path in ("", "/", "/index.html", "/dashboard", "/login", "/register"):
-            self.send_response(200)
-            self.send_header("Content-type", "text/html; charset=utf-8")
-            self.end_headers()
-            self.wfile.write(LOCAL_UI_HTML.encode("utf-8"))
+        dist_dir = os.path.join(BASE_DIR, "penta-app", "dist")
+        if path in ("", "/", "/index.html", "/dashboard", "/login", "/register", "/chat"):
+            index_path = os.path.join(dist_dir, "index.html")
+            if os.path.isfile(index_path):
+                with open(index_path, "rb") as f:
+                    content = f.read()
+                self.send_response(200)
+                self.send_header("Content-type", "text/html; charset=utf-8")
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.end_headers()
+                self.wfile.write(content)
+            else:
+                self.send_response(200)
+                self.send_header("Content-type", "text/html; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(LOCAL_UI_HTML.encode("utf-8"))
+
+        elif path.startswith("/assets/"):
+            asset_path = os.path.join(dist_dir, path.lstrip("/"))
+            if os.path.isfile(asset_path):
+                mime = "text/javascript" if asset_path.endswith(".js") else "text/css" if asset_path.endswith(".css") else "application/octet-stream"
+                with open(asset_path, "rb") as f:
+                    content = f.read()
+                self.send_response(200)
+                self.send_header("Content-type", mime)
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.end_headers()
+                self.wfile.write(content)
+            else:
+                self.send_error(404, "Asset not found")
 
         elif path == "/api/auth/me":
             auth = self.headers.get("Authorization", "")
@@ -642,10 +667,12 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
                 act_name = act.get("action", "unknown")
                 steps_log.append(f"[Step {s.get('step')}] Decision: {act_name} -> {json.dumps(act)}")
             final_msg = res.get("message", "Task finished.")
+            res["message"] = final_msg
+            res["platform"] = "pc"
             res["output"] = "\n".join(steps_log) + f"\n\n[COMPLETION] {final_msg}"
             self._send_json(res)
         except Exception as e:
-            self._send_json({"success": False, "error": str(e), "output": str(e)})
+            self._send_json({"success": False, "error": str(e), "output": str(e), "message": f"Error: {e}"})
 
     def handle_mobile_agent(self, data):
         goal = data.get("goal") or data.get("prompt", "Explore phone screen")

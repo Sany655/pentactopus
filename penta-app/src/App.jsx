@@ -59,6 +59,88 @@ const PROVIDER_INFO = {
   }
 };
 
+const ACTION_META = {
+  launch_app: { icon: '🚀', label: 'Launch App', color: '#60a5fa' },
+  open_url: { icon: '🌐', label: 'Open URL', color: '#38bdf8' },
+  type: { icon: '⌨️', label: 'Type Text', color: '#a78bfa' },
+  click: { icon: '🖱️', label: 'Click', color: '#34d399' },
+  double_click: { icon: '🖱️', label: 'Double Click', color: '#34d399' },
+  right_click: { icon: '🖱️', label: 'Right Click', color: '#f59e0b' },
+  hotkey: { icon: '🔤', label: 'Hotkey', color: '#c084fc' },
+  wait: { icon: '⏳', label: 'Wait', color: '#94a3b8' },
+  finish: { icon: '🎯', label: 'Completion', color: '#10b981' },
+  run_command: { icon: '💻', label: 'Command', color: '#fb923c' },
+  tap: { icon: '👆', label: 'Tap', color: '#34d399' },
+  key_event: { icon: '📱', label: 'Key Event', color: '#a78bfa' },
+  swipe: { icon: '👆', label: 'Swipe', color: '#38bdf8' },
+};
+
+const formatStepParams = (act = {}) => {
+  const type = act.action || act.type || 'unknown';
+  if (type === 'launch_app') return act.app || act.package || '';
+  if (type === 'open_url') return act.url || '';
+  if (type === 'type') return `"${act.text || ''}"`;
+  if (type === 'click' || type === 'double_click' || type === 'right_click' || type === 'tap') {
+    if (act.x !== undefined && act.y !== undefined) return `(${act.x}, ${act.y})`;
+    if (act.norm_x !== undefined) return `(${(act.norm_x * 100).toFixed(1)}%, ${(act.norm_y * 100).toFixed(1)}%)`;
+  }
+  if (type === 'hotkey') return act.key || act.keys || '';
+  if (type === 'wait') return `${act.seconds || 1}s`;
+  if (type === 'key_event') return act.key || '';
+  if (type === 'finish') return act.message || act.status || 'Done';
+  if (type === 'run_command') return act.command || '';
+  return '';
+};
+
+const parseMessageContent = (msg) => {
+  let text = msg.text || '';
+  let steps = msg.steps && Array.isArray(msg.steps) ? [...msg.steps] : [];
+
+  if (typeof text === 'string' && (text.includes('[Step ') || text.includes('[COMPLETION]'))) {
+    const completionIdx = text.indexOf('[COMPLETION]');
+    let stepsPart = '';
+    let finalPart = '';
+
+    if (completionIdx !== -1) {
+      stepsPart = text.substring(0, completionIdx);
+      finalPart = text.substring(completionIdx + 12).trim();
+    } else {
+      finalPart = text;
+    }
+
+    if (steps.length === 0 && stepsPart) {
+      const stepLines = stepsPart.split('\n');
+      stepLines.forEach(line => {
+        const match = line.match(/\[Step\s*(\d+)\]\s*Decision:\s*(\w+)\s*->\s*(\{.*\})/);
+        if (match) {
+          try {
+            steps.push({
+              step: parseInt(match[1], 10),
+              action: JSON.parse(match[3])
+            });
+          } catch (e) {
+            steps.push({
+              step: parseInt(match[1], 10),
+              action: { action: match[2], raw: match[3] }
+            });
+          }
+        }
+      });
+    }
+
+    text = finalPart || (steps.length > 0 ? 'Workflow executed successfully.' : text);
+  }
+
+  return { text, steps };
+};
+
+const SUGGESTIONS = [
+  { icon: '🔍', title: 'Web Research', prompt: 'Open Chrome and search what is Midek' },
+  { icon: '🖥️', title: 'System Diagnostics', prompt: 'Open Task Manager and check CPU performance' },
+  { icon: '📝', title: 'Draft Notes', prompt: 'Open Notepad and write a quick summary of current tasks' },
+  { icon: '⚡', title: 'Process Verification', prompt: 'Verify if Midek application or service is running' }
+];
+
 export default function App() {
   const [currentView, setCurrentView] = useState('login');
   const [serverUrl, setServerUrl] = useState('http://localhost:5050');
@@ -78,11 +160,18 @@ export default function App() {
   // Chat Agent State
   const [aiGoal, setAiGoal] = useState('');
   const [chatHistory, setChatHistory] = useState([
-    { sender: 'agent', text: 'Hello! I am your Pentactopus local AI agent. How can I assist you today?' }
+    { 
+      id: 1,
+      sender: 'agent', 
+      text: 'Hello! I am your Pentactopus autonomous AI agent. I can interact directly with your apps, browse the web, launch software, and perform complex multi-step workflows on your device. How can I help you today?',
+      time: 'Just now'
+    }
   ]);
   const [isExecuting, setIsExecuting] = useState(false);
   const [agentAccessLevel, setAgentAccessLevel] = useState('full'); // 'read_only' or 'full'
   const [showVisionPreview, setShowVisionPreview] = useState(false);
+  const [expandedSteps, setExpandedSteps] = useState({});
+  const [copiedId, setCopiedId] = useState(null);
   
   // New States
   const [llmProvider, setLlmProvider] = useState(localStorage.getItem('penta_llm_provider') || 'groq');
@@ -230,8 +319,29 @@ export default function App() {
   const isLocalServer = () => serverUrl.includes('localhost') || serverUrl.includes('127.0.0.1');
 
   const handleNewChat = () => {
-    setChatHistory([{ sender: 'agent', text: 'Hello! I am your Pentactopus local AI agent. How can I assist you today?' }]);
+    setChatHistory([{ 
+      id: Date.now(),
+      sender: 'agent', 
+      text: 'Hello! I am your Pentactopus autonomous AI agent. I can interact directly with your apps, browse the web, launch software, and perform complex multi-step workflows on your device. How can I help you today?',
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    }]);
     setAiGoal('');
+    setExpandedSteps({});
+  };
+
+  const handleCopyText = (text, id) => {
+    if (navigator?.clipboard?.writeText) {
+      navigator.clipboard.writeText(text);
+      setCopiedId(id);
+      setTimeout(() => setCopiedId(null), 2000);
+    }
+  };
+
+  const toggleSteps = (msgId) => {
+    setExpandedSteps(prev => ({
+      ...prev,
+      [msgId]: !prev[msgId]
+    }));
   };
 
   const handleSaveModelConfig = async () => {
@@ -267,15 +377,24 @@ export default function App() {
     }
   };
 
-  const executeAiDirective = async () => {
-    if (!aiGoal.trim() || isExecuting) return;
-    const goalText = aiGoal;
+  const executeAiDirective = async (customPrompt) => {
+    const goalText = typeof customPrompt === 'string' ? customPrompt.trim() : aiGoal.trim();
+    if (!goalText || isExecuting) return;
     setAiGoal('');
-    setChatHistory(prev => [...prev, { sender: 'user', text: goalText }]);
+    
+    const userMsgId = Date.now();
+    const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    setChatHistory(prev => [...prev, { 
+      id: userMsgId, 
+      sender: 'user', 
+      text: goalText,
+      time: timeStr
+    }]);
     setIsExecuting(true);
     
     const devId = selectedDevice === 'pc' ? 'pc_windows_host' : 'phone_android_node';
-    const targetModel = PROVIDER_INFO[llmProvider]?.model;
+    const targetModel = PROVIDER_INFO[llmProvider]?.model || 'openai/gpt-oss-120b';
 
     try {
       const isLocal = isLocalServer();
@@ -297,28 +416,49 @@ export default function App() {
         })
       });
       const data = await res.json();
+      const agentMsgId = Date.now() + 1;
+      const agentTimeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       
       if (data.success) {
-        if (isLocal) {
-          let aiText = data.output;
-          try {
-            const jsonStart = aiText.indexOf('{');
-            const jsonEnd = aiText.lastIndexOf('}');
-            if (jsonStart !== -1 && jsonEnd !== -1) {
-              const parsed = JSON.parse(aiText.substring(jsonStart, jsonEnd + 1));
-              if (parsed.message) aiText = parsed.message;
-            }
-          } catch (e) {}
-          setChatHistory(prev => [...prev, { sender: 'agent', text: aiText }]);
-        } else {
-          setChatHistory(prev => [...prev, { sender: 'agent', text: data.message || `Mission dispatched. Task ID: ${data.task_id}` }]);
+        let cleanMsg = data.message;
+        if (!cleanMsg && data.output) {
+          if (data.output.includes('[COMPLETION]')) {
+            cleanMsg = data.output.split('[COMPLETION]').pop().trim();
+          } else {
+            cleanMsg = data.output;
+          }
         }
+        if (!cleanMsg) cleanMsg = 'Task finished successfully.';
+
+        setChatHistory(prev => [...prev, { 
+          id: agentMsgId,
+          sender: 'agent', 
+          text: cleanMsg,
+          steps: data.steps || [],
+          platform: data.platform || selectedDevice,
+          model: targetModel,
+          time: agentTimeStr
+        }]);
       } else {
         const errMsg = data.error || data.message || data.output || 'Failed to dispatch mission';
-        setChatHistory(prev => [...prev, { sender: 'agent', text: `Error: ${errMsg}` }]);
+        setChatHistory(prev => [...prev, { 
+          id: agentMsgId,
+          sender: 'agent', 
+          text: `Error: ${errMsg}`,
+          isError: true,
+          platform: selectedDevice,
+          model: targetModel,
+          time: agentTimeStr
+        }]);
       }
     } catch (err) {
-      setChatHistory(prev => [...prev, { sender: 'agent', text: `Error: Failed to reach agent service (${err.message || 'Connection error'})` }]);
+      setChatHistory(prev => [...prev, { 
+        id: Date.now() + 1,
+        sender: 'agent', 
+        text: `Error: Failed to reach agent service (${err.message || 'Connection error'})`,
+        isError: true,
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      }]);
     } finally {
       setIsExecuting(false);
     }
@@ -640,11 +780,11 @@ export default function App() {
     loginCard: { background: '#121215', padding: '40px', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.05)', width: '360px', boxShadow: '0 20px 40px rgba(0,0,0,0.4)' },
     input: { width: '100%', padding: '12px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff', fontSize: '14px', marginBottom: '16px', boxSizing: 'border-box' },
     button: { width: '100%', padding: '12px', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: '600', cursor: 'pointer', transition: 'background 0.2s' },
-    chatContainer: { flex: 1, display: 'flex', flexDirection: 'column', maxWidth: '800px', margin: '0 auto', width: '100%', padding: '24px', boxSizing: 'border-box' },
-    messageList: { flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '20px', paddingBottom: '20px' },
-    bubbleUser: { alignSelf: 'flex-end', background: '#3b82f6', color: '#fff', padding: '12px 16px', borderRadius: '16px 16px 4px 16px', maxWidth: '80%' },
-    bubbleAgent: { alignSelf: 'flex-start', background: '#1e1e24', border: '1px solid #27272a', color: '#e4e4e7', padding: '12px 16px', borderRadius: '16px 16px 16px 4px', maxWidth: '85%', whiteSpace: 'pre-wrap', fontFamily: 'monospace', fontSize: '13px' },
-    inputBar: { display: 'flex', gap: '12px', background: '#121215', padding: '12px', borderRadius: '12px', border: '1px solid #27272a' },
+    chatContainer: { flex: 1, display: 'flex', flexDirection: 'column', maxWidth: '920px', margin: '0 auto', width: '100%', padding: '20px 24px', boxSizing: 'border-box', height: '100%', overflow: 'hidden' },
+    messageList: { flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '22px', paddingBottom: '24px', paddingRight: '4px' },
+    bubbleUser: { alignSelf: 'flex-end', background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)', color: '#ffffff', padding: '12px 18px', borderRadius: '18px 18px 4px 18px', maxWidth: '80%', boxShadow: '0 4px 14px rgba(37, 99, 235, 0.25)', fontSize: '14px', lineHeight: '1.55', wordBreak: 'break-word' },
+    bubbleAgent: { alignSelf: 'flex-start', background: '#141418', border: '1px solid #27272a', color: '#f4f4f5', padding: '16px 20px', borderRadius: '18px 18px 18px 4px', width: '100%', boxSizing: 'border-box', fontSize: '14px', lineHeight: '1.65', boxShadow: '0 8px 24px rgba(0,0,0,0.3)', wordBreak: 'break-word', whiteSpace: 'pre-wrap', fontFamily: 'Inter, system-ui, -apple-system, sans-serif' },
+    inputBar: { display: 'flex', flexDirection: 'column', gap: '8px', background: '#121217', padding: '12px 16px', borderRadius: '16px', border: '1px solid #27272a', boxShadow: '0 10px 30px rgba(0,0,0,0.3)' },
     viewportContainer: { flex: 1, display: 'flex', flexDirection: 'column', padding: '24px', background: '#09090b' },
     canvasWrapper: { flex: 1, background: '#000', borderRadius: '12px', border: '1px solid #27272a', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' },
   };
@@ -777,60 +917,350 @@ export default function App() {
 
   const renderChat = () => (
     <div style={{ flex: 1, display: 'flex', overflow: 'hidden', flexDirection: isMobile ? 'column' : 'row' }}>
-      <div style={{ width: isMobile ? '100%' : '260px', height: isMobile ? '140px' : 'auto', background: '#0e0e11', borderRight: isMobile ? 'none' : '1px solid #27272a', borderBottom: isMobile ? '1px solid #27272a' : 'none', display: 'flex', flexDirection: 'column', padding: '16px', boxSizing: 'border-box', flexShrink: 0 }}>
+      {/* Sidebar */}
+      <div style={{ width: isMobile ? '100%' : '260px', height: isMobile ? 'auto' : '100%', background: '#0e0e11', borderRight: isMobile ? 'none' : '1px solid #27272a', borderBottom: isMobile ? '1px solid #27272a' : 'none', display: 'flex', flexDirection: 'column', padding: '16px', boxSizing: 'border-box', flexShrink: 0, gap: '14px', overflowY: 'auto' }}>
         <button 
-          style={{ ...styles.button, background: 'transparent', border: '1px solid #3f3f46', marginBottom: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', color: '#e4e4e7' }}
+          style={{ ...styles.button, background: '#181820', border: '1px solid #27272a', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', color: '#e4e4e7', padding: '10px' }}
           onClick={handleNewChat}
+          onMouseEnter={e => { e.currentTarget.style.borderColor = '#3b82f6'; e.currentTarget.style.background = '#20202a'; }}
+          onMouseLeave={e => { e.currentTarget.style.borderColor = '#27272a'; e.currentTarget.style.background = '#181820'; }}
         >
           <span style={{ fontSize: '16px', fontWeight: 'bold' }}>+</span> New Chat
         </button>
         
-        <div style={{ marginBottom: '16px' }}>
+        {/* Device Target Segmented Switcher */}
+        <div>
+          <label style={{ fontSize: '11px', fontWeight: '600', color: '#71717a', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '8px' }}>
+            Target Device
+          </label>
+          <div style={{ display: 'flex', background: '#18181b', padding: '3px', borderRadius: '8px', border: '1px solid #27272a' }}>
+            <button
+              onClick={() => setSelectedDevice('pc')}
+              style={{
+                flex: 1,
+                padding: '6px 8px',
+                borderRadius: '6px',
+                border: 'none',
+                background: selectedDevice === 'pc' ? '#2563eb' : 'transparent',
+                color: selectedDevice === 'pc' ? '#fff' : '#a1a1aa',
+                fontSize: '12px',
+                fontWeight: selectedDevice === 'pc' ? '600' : '400',
+                cursor: 'pointer',
+                transition: 'all 0.15s',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '4px'
+              }}
+            >
+              <span>🖥️</span> Windows
+            </button>
+            <button
+              onClick={() => setSelectedDevice('mobile')}
+              style={{
+                flex: 1,
+                padding: '6px 8px',
+                borderRadius: '6px',
+                border: 'none',
+                background: selectedDevice === 'mobile' ? '#2563eb' : 'transparent',
+                color: selectedDevice === 'mobile' ? '#fff' : '#a1a1aa',
+                fontSize: '12px',
+                fontWeight: selectedDevice === 'mobile' ? '600' : '400',
+                cursor: 'pointer',
+                transition: 'all 0.15s',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '4px'
+              }}
+            >
+              <span>📱</span> Android
+            </button>
+          </div>
+        </div>
+
+        <div>
           <label style={{ fontSize: '11px', fontWeight: '600', color: '#71717a', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Agent Access</label>
           <select 
-            style={{ ...styles.input, marginTop: '8px', fontSize: '12px', padding: '8px', background: '#18181b' }}
+            style={{ ...styles.input, marginTop: '6px', fontSize: '12px', padding: '8px', background: '#18181b', marginBottom: 0 }}
             value={agentAccessLevel}
             onChange={e => setAgentAccessLevel(e.target.value)}
           >
-            <option value="full">Full Control (Click/Type)</option>
-            <option value="read_only">Read-Only (Analysis)</option>
+            <option value="full">Full Control (Click/Type/Launch)</option>
+            <option value="read_only">Read-Only (Inspect Screen)</option>
           </select>
         </div>
         
-        <div style={{ marginBottom: '16px' }}>
-          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#a1a1aa', cursor: 'pointer' }}>
+        <div>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#a1a1aa', cursor: 'pointer' }}>
             <input type="checkbox" checked={showVisionPreview} onChange={e => setShowVisionPreview(e.target.checked)} />
-            Show Vision Preview
+            Show Live Vision Stream
           </label>
         </div>
 
-        <div style={{ fontSize: '11px', fontWeight: '600', color: '#71717a', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '12px' }}>Recent Sessions</div>
+        {/* Model info banner */}
+        <div style={{ background: '#121217', border: '1px solid #27272a', padding: '10px', borderRadius: '8px' }}>
+          <div style={{ fontSize: '11px', color: '#71717a', marginBottom: '2px' }}>ACTIVE BRAIN</div>
+          <div style={{ fontSize: '12px', fontWeight: '600', color: '#60a5fa' }}>{PROVIDER_INFO[llmProvider]?.name || 'Groq'}</div>
+          <div style={{ fontSize: '10px', color: '#a1a1aa', marginTop: '2px', fontFamily: 'monospace' }}>{PROVIDER_INFO[llmProvider]?.model || 'openai/gpt-oss-120b'}</div>
+          <button 
+            onClick={() => setCurrentView('model_config')}
+            style={{ background: 'transparent', border: 'none', color: '#3b82f6', fontSize: '11px', padding: 0, marginTop: '6px', cursor: 'pointer', textAlign: 'left' }}
+          >
+            ⚙️ Switch Model / Key ➔
+          </button>
+        </div>
+
+        <div style={{ fontSize: '11px', fontWeight: '600', color: '#71717a', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Recent Sessions</div>
         <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-          <div style={{ padding: '10px 12px', background: '#18181b', borderRadius: '6px', fontSize: '13px', color: '#e4e4e7', cursor: 'pointer', border: '1px solid #3b82f6' }}>
+          <div style={{ padding: '8px 10px', background: '#18181b', borderRadius: '6px', fontSize: '12px', color: '#e4e4e7', cursor: 'pointer', border: '1px solid #3b82f6' }}>
             Current Session
           </div>
-          <div style={{ padding: '10px 12px', borderRadius: '6px', fontSize: '13px', color: '#a1a1aa', cursor: 'pointer' }} onMouseEnter={e => e.target.style.background = '#18181b'} onMouseLeave={e => e.target.style.background = 'transparent'}>
+          <div style={{ padding: '8px 10px', borderRadius: '6px', fontSize: '12px', color: '#71717a', cursor: 'pointer' }} onMouseEnter={e => e.target.style.background = '#18181b'} onMouseLeave={e => e.target.style.background = 'transparent'}>
             System Diagnostics
           </div>
-          <div style={{ padding: '10px 12px', borderRadius: '6px', fontSize: '13px', color: '#a1a1aa', cursor: 'pointer' }} onMouseEnter={e => e.target.style.background = '#18181b'} onMouseLeave={e => e.target.style.background = 'transparent'}>
-            File cleanup
+          <div style={{ padding: '8px 10px', borderRadius: '6px', fontSize: '12px', color: '#71717a', cursor: 'pointer' }} onMouseEnter={e => e.target.style.background = '#18181b'} onMouseLeave={e => e.target.style.background = 'transparent'}>
+            Browser Automation
           </div>
         </div>
       </div>
+
+      {/* Main Chat Area */}
       <div style={styles.chatContainer}>
-        <div style={styles.messageList}>
-          {chatHistory.map((msg, i) => (
-            <div key={i} style={msg.sender === 'user' ? styles.bubbleUser : styles.bubbleAgent}>
-              {msg.text}
+        {/* Top Header Bar */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '14px', borderBottom: '1px solid rgba(255,255,255,0.06)', marginBottom: '14px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontSize: '16px' }}>{selectedDevice === 'pc' ? '🖥️' : '📱'}</span>
+            <div>
+              <div style={{ fontSize: '14px', fontWeight: '600', color: '#fff' }}>
+                {selectedDevice === 'pc' ? 'Windows Host Agent' : 'Android Node Agent'}
+              </div>
+              <div style={{ fontSize: '11px', color: '#71717a' }}>
+                {selectedDevice === 'pc' ? 'Direct OS automation • Apps, Browser & System' : 'ADB node automation • Mobile apps & UI'}
+              </div>
             </div>
-          ))}
-          {isExecuting && (
-            <div style={{ ...styles.bubbleAgent, opacity: 0.7 }}>
-              <span style={{ display: 'inline-block', animation: 'pulse 1.5s infinite' }}>●</span>
-              <span style={{ display: 'inline-block', animation: 'pulse 1.5s infinite', animationDelay: '0.2s', margin: '0 4px' }}>●</span>
-              <span style={{ display: 'inline-block', animation: 'pulse 1.5s infinite', animationDelay: '0.4s' }}>●</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981' }}></span>
+            <span style={{ fontSize: '12px', color: '#10b981', fontWeight: '500' }}>Ready</span>
+          </div>
+        </div>
+
+        {/* Message List */}
+        <div style={styles.messageList}>
+          {/* Hero Quick Suggestions (only when chat has 1 message) */}
+          {chatHistory.length <= 1 && (
+            <div style={{ margin: 'auto 0', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '20px 0' }}>
+              <div style={{ width: '56px', height: '56px', borderRadius: '16px', background: 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px', marginBottom: '16px', boxShadow: '0 8px 24px rgba(59, 130, 246, 0.3)' }}>
+                🐙
+              </div>
+              <h3 style={{ margin: '0 0 8px 0', fontSize: '20px', fontWeight: '600', color: '#fff' }}>
+                How can I assist your {selectedDevice === 'pc' ? 'Windows Desktop' : 'Android Device'}?
+              </h3>
+              <p style={{ margin: '0 0 24px 0', fontSize: '13px', color: '#a1a1aa', maxWidth: '480px', lineHeight: '1.6' }}>
+                Pentactopus can launch applications, search the web, analyze active screens, type queries, and automate multi-step computer tasks.
+              </p>
+              
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '10px', width: '100%', maxWidth: '620px' }}>
+                {SUGGESTIONS.map((item, idx) => (
+                  <div
+                    key={idx}
+                    onClick={() => executeAiDirective(item.prompt)}
+                    style={{
+                      background: '#121217',
+                      border: '1px solid #27272a',
+                      borderRadius: '12px',
+                      padding: '12px 14px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '12px',
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                      transition: 'all 0.2s',
+                    }}
+                    onMouseEnter={e => {
+                      e.currentTarget.style.background = '#181820';
+                      e.currentTarget.style.borderColor = '#3b82f6';
+                      e.currentTarget.style.transform = 'translateY(-2px)';
+                    }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.background = '#121217';
+                      e.currentTarget.style.borderColor = '#27272a';
+                      e.currentTarget.style.transform = 'translateY(0)';
+                    }}
+                  >
+                    <span style={{ fontSize: '20px' }}>{item.icon}</span>
+                    <div style={{ overflow: 'hidden' }}>
+                      <div style={{ fontSize: '13px', fontWeight: '600', color: '#e4e4e7' }}>{item.title}</div>
+                      <div style={{ fontSize: '11px', color: '#71717a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.prompt}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
+
+          {/* Render Messages */}
+          {chatHistory.map((msg, i) => {
+            const isUser = msg.sender === 'user';
+            const msgId = msg.id || i;
+            const { text: cleanText, steps } = parseMessageContent(msg);
+            const isExpanded = !!expandedSteps[msgId];
+            const isCopied = copiedId === msgId;
+
+            if (isUser) {
+              return (
+                <div key={msgId} style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: '#71717a', marginRight: '4px' }}>
+                    <span>You</span>
+                    {msg.time && <span>• {msg.time}</span>}
+                  </div>
+                  <div style={styles.bubbleUser}>
+                    {cleanText}
+                  </div>
+                </div>
+              );
+            }
+
+            return (
+              <div key={msgId} style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '8px', maxWidth: '94%' }}>
+                {/* Agent Header */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#a1a1aa' }}>
+                  <div style={{ width: '22px', height: '22px', borderRadius: '50%', background: 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px' }}>
+                    🐙
+                  </div>
+                  <span style={{ fontWeight: '600', color: '#e4e4e7' }}>Pentactopus AI</span>
+                  <span style={{ fontSize: '10px', background: 'rgba(59, 130, 246, 0.1)', color: '#60a5fa', padding: '2px 6px', borderRadius: '4px', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
+                    {msg.model || PROVIDER_INFO[llmProvider]?.model || 'GPT-OSS 120B'}
+                  </span>
+                  <span style={{ fontSize: '10px', background: 'rgba(255, 255, 255, 0.05)', color: '#94a3b8', padding: '2px 6px', borderRadius: '4px' }}>
+                    {msg.platform === 'pc' || selectedDevice === 'pc' ? '🖥️ Windows' : '📱 Android'}
+                  </span>
+                  {msg.time && <span style={{ fontSize: '11px', color: '#52525b' }}>{msg.time}</span>}
+                </div>
+
+                {/* Collapsible Steps Trace (if any actions executed) */}
+                {steps.length > 0 && (
+                  <div style={{ width: '100%', background: '#101014', border: '1px solid #27272a', borderRadius: '10px', overflow: 'hidden', margin: '2px 0 6px 0' }}>
+                    <div 
+                      onClick={() => toggleSteps(msgId)}
+                      style={{
+                        padding: '8px 12px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        cursor: 'pointer',
+                        fontSize: '12px',
+                        color: '#93c5fd',
+                        background: 'rgba(59, 130, 246, 0.05)',
+                        borderBottom: isExpanded ? '1px solid #27272a' : 'none',
+                        transition: 'background 0.15s'
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.background = 'rgba(59, 130, 246, 0.1)'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'rgba(59, 130, 246, 0.05)'}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '18px', height: '18px', borderRadius: '50%', background: 'rgba(59, 130, 246, 0.2)', fontSize: '10px', fontWeight: 'bold' }}>
+                          ⚡
+                        </span>
+                        <span style={{ fontWeight: '600' }}>{steps.length} Agent Actions Executed</span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: '#60a5fa' }}>
+                        <span>{isExpanded ? 'Hide Trace' : 'View Trace'}</span>
+                        <span style={{ fontSize: '10px' }}>{isExpanded ? '▲' : '▼'}</span>
+                      </div>
+                    </div>
+
+                    {isExpanded && (
+                      <div style={{ padding: '8px 12px', display: 'flex', flexDirection: 'column', gap: '6px', background: '#0a0a0d', maxHeight: '240px', overflowY: 'auto' }}>
+                        {steps.map((s, sIdx) => {
+                          const act = s.action || {};
+                          const actType = act.action || act.type || 'wait';
+                          const meta = ACTION_META[actType] || { icon: '⚙️', label: actType, color: '#a1a1aa' };
+                          const paramStr = formatStepParams(act);
+
+                          return (
+                            <div key={sIdx} style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '12px', padding: '4px 6px', borderRadius: '6px', background: 'rgba(255,255,255,0.02)' }}>
+                              <span style={{ fontSize: '10px', color: '#71717a', minWidth: '22px', fontWeight: '600' }}>#{s.step || sIdx + 1}</span>
+                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '2px 8px', borderRadius: '4px', background: 'rgba(255,255,255,0.05)', color: meta.color, fontSize: '11px', fontWeight: '500' }}>
+                                <span>{meta.icon}</span>
+                                <span>{meta.label}</span>
+                              </span>
+                              {paramStr && (
+                                <span style={{ fontFamily: 'monospace', fontSize: '11px', color: '#cbd5e1', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '420px' }}>
+                                  {paramStr}
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Primary Response Bubble */}
+                <div style={{ ...styles.bubbleAgent, borderColor: msg.isError ? '#ef4444' : '#27272a' }}>
+                  {cleanText}
+                </div>
+
+                {/* Bubble Action Footer */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', paddingLeft: '4px' }}>
+                  <button
+                    onClick={() => handleCopyText(cleanText, msgId)}
+                    style={{
+                      background: 'transparent',
+                      border: 'none',
+                      color: isCopied ? '#10b981' : '#71717a',
+                      fontSize: '11px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      padding: '2px 6px',
+                      borderRadius: '4px',
+                      transition: 'color 0.15s'
+                    }}
+                    onMouseEnter={e => { if (!isCopied) e.currentTarget.style.color = '#e4e4e7'; }}
+                    onMouseLeave={e => { if (!isCopied) e.currentTarget.style.color = '#71717a'; }}
+                  >
+                    <span>{isCopied ? '✓' : '📋'}</span>
+                    <span>{isCopied ? 'Copied to clipboard' : 'Copy'}</span>
+                  </button>
+                  {steps.length > 0 && (
+                    <span style={{ fontSize: '11px', color: '#52525b' }}>
+                      Completed in {steps.length} {steps.length === 1 ? 'action' : 'actions'}
+                    </span>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+
+          {/* Active Executing State */}
+          {isExecuting && (
+            <div style={{ alignSelf: 'flex-start', display: 'flex', flexDirection: 'column', gap: '6px', maxWidth: '85%' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#a1a1aa' }}>
+                <div style={{ width: '22px', height: '22px', borderRadius: '50%', background: 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px' }}>
+                  🐙
+                </div>
+                <span style={{ fontWeight: '600', color: '#e4e4e7' }}>Pentactopus AI</span>
+                <span style={{ fontSize: '11px', color: '#60a5fa' }}>executing live on {selectedDevice === 'pc' ? 'Windows' : 'Android'}...</span>
+              </div>
+              <div style={{ ...styles.bubbleAgent, background: '#16161d', borderColor: '#3b82f6', display: 'flex', alignItems: 'center', gap: '12px', padding: '14px 18px' }}>
+                <div style={{ display: 'flex', gap: '6px' }}>
+                  <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#3b82f6', display: 'inline-block', animation: 'pulse 1.2s infinite' }} />
+                  <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#60a5fa', display: 'inline-block', animation: 'pulse 1.2s infinite', animationDelay: '0.2s' }} />
+                  <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#a78bfa', display: 'inline-block', animation: 'pulse 1.2s infinite', animationDelay: '0.4s' }} />
+                </div>
+                <span style={{ fontSize: '13px', color: '#cbd5e1' }}>
+                  Analyzing desktop state and predicting autonomous computer actions...
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Vision Preview */}
           {showVisionPreview && (
             <div style={{ alignSelf: 'center', background: '#18181b', padding: '8px', borderRadius: '8px', border: '1px solid #27272a', margin: '8px 0', textAlign: 'center' }}>
               <div style={{ fontSize: '11px', color: '#a1a1aa', marginBottom: '4px' }}>Agent Vision (Live View)</div>
@@ -845,22 +1275,53 @@ export default function App() {
           <div ref={chatEndRef} />
         </div>
         
+        {/* Floating Input Bar */}
         <div style={styles.inputBar}>
-          <input 
-            style={{ ...styles.input, marginBottom: 0, border: 'none', background: 'transparent' }}
-            type="text" 
-            placeholder="Ask the AI agent to perform a task on your device..." 
-            value={aiGoal}
-            onChange={e => setAiGoal(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter') executeAiDirective(); }}
-          />
-          <button 
-            style={{ ...styles.button, width: 'auto', padding: '0 24px' }}
-            onClick={executeAiDirective}
-            disabled={isExecuting}
-          >
-            Send
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <input 
+              style={{ 
+                flex: 1, 
+                background: 'transparent', 
+                border: 'none', 
+                outline: 'none', 
+                color: '#fff', 
+                fontSize: '14px',
+                padding: '4px 0'
+              }}
+              type="text" 
+              placeholder={`Instruct Pentactopus to perform any action on ${selectedDevice === 'pc' ? 'Windows Desktop' : 'Android Phone'}...`}
+              value={aiGoal}
+              onChange={e => setAiGoal(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); executeAiDirective(); } }}
+              disabled={isExecuting}
+            />
+            <button 
+              style={{ 
+                background: isExecuting ? '#27272a' : 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)', 
+                color: '#fff', 
+                border: 'none', 
+                borderRadius: '10px', 
+                padding: '10px 20px', 
+                fontSize: '13px', 
+                fontWeight: '600', 
+                cursor: isExecuting ? 'not-allowed' : 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                boxShadow: isExecuting ? 'none' : '0 4px 14px rgba(37, 99, 235, 0.4)',
+                transition: 'all 0.2s'
+              }}
+              onClick={() => executeAiDirective()}
+              disabled={isExecuting}
+            >
+              <span>{isExecuting ? 'Running...' : 'Send'}</span>
+              <span>{!isExecuting && '➔'}</span>
+            </button>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px', color: '#52525b', paddingLeft: '2px', paddingRight: '2px' }}>
+            <span>Target: <strong style={{ color: '#94a3b8' }}>{selectedDevice === 'pc' ? 'Windows Host (Apps, Chrome, Win32)' : 'Android Node (ADB)'}</strong></span>
+            <span>Press <kbd style={{ background: '#18181b', padding: '1px 4px', borderRadius: '3px', border: '1px solid #27272a' }}>Enter ↵</kbd> to send</span>
+          </div>
         </div>
       </div>
     </div>

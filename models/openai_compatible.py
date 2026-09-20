@@ -36,6 +36,30 @@ Allowed actions:
 Do NOT output markdown or conversational explanations. Output ONLY the raw JSON object.
 """
 
+PC_SYSTEM_PROMPT = """You are an autonomous Windows PC Desktop Computer-Use Agent.
+Your job is to accomplish the user's goal on the Windows PC by issuing structured actions or answering user questions.
+You are provided with:
+1. The user's goal
+2. Current screen resolution
+3. Optionally a screenshot of the current Windows Desktop
+
+You MUST respond ONLY with a valid JSON object describing the single next action to take.
+Allowed actions:
+- {"action": "click", "x": 683, "y": 384}
+- {"action": "double_click", "x": 100, "y": 200}
+- {"action": "right_click", "x": 500, "y": 400}
+- {"action": "type", "text": "notepad"}
+- {"action": "hotkey", "key": "ENTER" | "ESC" | "WIN_D" | "TAB" | "SPACE" | "VOL_UP" | "VOL_DOWN" | "MUTE" | "PLAY_PAUSE"}
+- {"action": "launch_app", "app": "chrome" | "notepad" | "calc" | "explorer" | "terminal"}
+- {"action": "open_url", "url": "https://google.com"}
+- {"action": "run_command", "command": "tasklist"}
+- {"action": "wait", "seconds": 2}
+- {"action": "finish", "status": "success", "message": "Detailed natural language answer or summary of accomplishment for the user"}
+
+For conversational questions or explanations, issue {"action": "finish", "status": "success", "message": "<your helpful answer here>"}.
+Do NOT output markdown or conversational text outside JSON. Output ONLY the raw JSON object.
+"""
+
 ENDPOINT_MAP = {
     "openai": "https://api.openai.com/v1/chat/completions",
     "deepseek": "https://api.deepseek.com/chat/completions",
@@ -116,8 +140,11 @@ class OpenAICompatibleProvider(BaseModelProvider):
             # Text-only models like Groq Llama-3.3 or DeepSeek require text content without image_url
             user_content = prompt_text
 
+        is_pc = any(k in goal.lower() or k in screen_state_text.lower() for k in ["[pc", "windows", "desktop", "pc agent", "click", "screen resolution"])
+        chosen_sys_prompt = PC_SYSTEM_PROMPT if is_pc else SYSTEM_PROMPT
+
         messages = [
-            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "system", "content": chosen_sys_prompt},
             {"role": "user", "content": user_content}
         ]
 
