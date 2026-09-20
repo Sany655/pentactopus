@@ -114,9 +114,21 @@ def get_model_provider(
         raise ValueError(f"Unknown provider '{provider_name}'. Available: {list(PROVIDER_REGISTRY.keys())}")
 
     meta = PROVIDER_REGISTRY[name]
-    target_model = model_name or meta["default_model"]
+    # Guard against passing mismatched model names to providers (e.g. from stale env vars or default fallbacks)
+    if model_name and "gemini" in model_name.lower() and name not in ("gemini", "openrouter"):
+        target_model = meta["default_model"]
+    elif model_name and "claude" in model_name.lower() and name not in ("anthropic", "openrouter"):
+        target_model = meta["default_model"]
+    elif model_name and "gpt" in model_name.lower() and name not in ("openai", "openrouter"):
+        target_model = meta["default_model"]
+    elif model_name and "llama" in model_name.lower() and name not in ("groq", "ollama", "openrouter"):
+        target_model = meta["default_model"]
+    else:
+        target_model = model_name or meta["default_model"]
+
     creator = meta["class"]
     primary = creator(target_model, api_key)
+
 
     if not enable_fallback:
         return primary

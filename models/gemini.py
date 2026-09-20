@@ -90,15 +90,41 @@ class GeminiProvider(BaseModelProvider):
             }
         }
 
+        headers = {
+            "Content-Type": "application/json",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36 Pentactopus/2.5.7"
+        }
+
         req = urllib.request.Request(
             url,
             data=json.dumps(payload).encode("utf-8"),
-            headers={"Content-Type": "application/json"},
+            headers=headers,
             method="POST"
         )
 
-        with urllib.request.urlopen(req, timeout=30) as resp:
-            data = json.loads(resp.read().decode("utf-8"))
+        try:
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+        except urllib.error.HTTPError as e:
+            try:
+                body = e.read().decode("utf-8")
+                err_data = json.loads(body)
+                err_msg = (
+                    err_data.get("error", {}).get("message")
+                    or err_data.get("message")
+                    or body
+                )
+                raise ValueError(f"Gemini API Error ({e.code}): {err_msg}")
+            except Exception as parse_err:
+                if isinstance(parse_err, ValueError):
+                    raise parse_err
+                raise ValueError(f"Gemini HTTP Error {e.code}: {e.reason}")
+        except urllib.error.URLError as e:
+            raise ValueError(f"Failed to connect to Google Gemini: {e.reason}")
 
-        text_resp = data["candidates"][0]["content"]["parts"][0]["text"]
-        return json.loads(text_resp)
+        try:
+            text_resp = data["candidates"][0]["content"]["parts"][0]["text"]
+            return json.loads(text_resp)
+        except Exception as e:
+            raise ValueError(f"Invalid response from Gemini API: {data.get('promptFeedback', data)}")
+

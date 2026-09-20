@@ -1,5 +1,64 @@
 import React, { useState, useEffect, useRef } from 'react';
 
+const PROVIDER_INFO = {
+  groq: {
+    name: 'Groq (Llama 3.3)',
+    model: 'llama-3.3-70b-versatile',
+    keyUrl: 'https://console.groq.com/keys',
+    label: 'console.groq.com/keys',
+    buttonText: 'Get Free Groq Key',
+    description: 'Ultra-fast Llama 3.3 70B inference with high free-tier rate limits.'
+  },
+  gemini: {
+    name: 'Google Gemini',
+    model: 'gemini-2.5-flash',
+    keyUrl: 'https://aistudio.google.com/app/apikey',
+    label: 'aistudio.google.com/app/apikey',
+    buttonText: 'Get Free Gemini Key',
+    description: 'Multimodal vision intelligence via Google AI Studio.'
+  },
+  openai: {
+    name: 'OpenAI (GPT-4o)',
+    model: 'gpt-4o-mini',
+    keyUrl: 'https://platform.openai.com/api-keys',
+    label: 'platform.openai.com/api-keys',
+    buttonText: 'Get OpenAI Key',
+    description: 'Official GPT-4o / GPT-4o-mini autonomous computer-use.'
+  },
+  anthropic: {
+    name: 'Anthropic Claude',
+    model: 'claude-3-5-sonnet-20241022',
+    keyUrl: 'https://console.anthropic.com/settings/keys',
+    label: 'console.anthropic.com/settings/keys',
+    buttonText: 'Get Claude Key',
+    description: 'Claude 3.5 Sonnet advanced reasoning and precision action execution.'
+  },
+  deepseek: {
+    name: 'DeepSeek',
+    model: 'deepseek-chat',
+    keyUrl: 'https://platform.deepseek.com/api_keys',
+    label: 'platform.deepseek.com/api_keys',
+    buttonText: 'Get DeepSeek Key',
+    description: 'DeepSeek V3 cost-efficient high intelligence model.'
+  },
+  openrouter: {
+    name: 'OpenRouter',
+    model: 'google/gemini-2.5-flash',
+    keyUrl: 'https://openrouter.ai/keys',
+    label: 'openrouter.ai/keys',
+    buttonText: 'Get OpenRouter Key',
+    description: 'Unified router supporting hundreds of models with a single API key.'
+  },
+  ollama: {
+    name: 'Ollama (Local)',
+    model: 'llama3.2',
+    keyUrl: 'https://ollama.com/download',
+    label: 'ollama.com/download',
+    buttonText: 'Download Ollama Engine',
+    description: '100% offline local inference on your GPU/CPU without needing an API key.'
+  }
+};
+
 export default function App() {
   const [currentView, setCurrentView] = useState('login');
   const [serverUrl, setServerUrl] = useState('http://localhost:5050');
@@ -26,9 +85,11 @@ export default function App() {
   const [showVisionPreview, setShowVisionPreview] = useState(false);
   
   // New States
-  const [llmProvider, setLlmProvider] = useState(localStorage.getItem('penta_llm_provider') || 'openai');
+  const [llmProvider, setLlmProvider] = useState(localStorage.getItem('penta_llm_provider') || 'groq');
   const [apiKey, setApiKey] = useState(localStorage.getItem('penta_api_key') || '');
   const [visionQuality, setVisionQuality] = useState('high');
+  const [isSavingConfig, setIsSavingConfig] = useState(false);
+  const [configSaveStatus, setConfigSaveStatus] = useState('');
   
   // Support & FAQ State
   const [supportName, setSupportName] = useState('');
@@ -173,6 +234,39 @@ export default function App() {
     setAiGoal('');
   };
 
+  const handleSaveModelConfig = async () => {
+    setIsSavingConfig(true);
+    setConfigSaveStatus('');
+    try {
+      localStorage.setItem('penta_llm_provider', llmProvider);
+      localStorage.setItem('penta_api_key', apiKey);
+      
+      const defaultModel = PROVIDER_INFO[llmProvider]?.model || 'gemini-2.5-flash';
+      await fetch(`${serverUrl}/api/config`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          provider: llmProvider,
+          model: defaultModel,
+          model_name: defaultModel,
+          api_key: apiKey
+        })
+      });
+      setConfigSaveStatus('Configuration saved and synchronized to system!');
+      setTimeout(() => {
+        setCurrentView('chat');
+      }, 700);
+    } catch (err) {
+      console.warn('Could not sync config to server, saved locally:', err);
+      setConfigSaveStatus('Saved locally to browser storage.');
+      setTimeout(() => {
+        setCurrentView('chat');
+      }, 700);
+    } finally {
+      setIsSavingConfig(false);
+    }
+  };
+
   const executeAiDirective = async () => {
     if (!aiGoal.trim() || isExecuting) return;
     const goalText = aiGoal;
@@ -181,6 +275,7 @@ export default function App() {
     setIsExecuting(true);
     
     const devId = selectedDevice === 'pc' ? 'pc_windows_host' : 'phone_android_node';
+    const targetModel = PROVIDER_INFO[llmProvider]?.model;
 
     try {
       const isLocal = isLocalServer();
@@ -191,7 +286,15 @@ export default function App() {
       const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'goal', type: 'goal', goal: goalText, provider: llmProvider, api_key: apiKey })
+        body: JSON.stringify({ 
+          action: 'goal', 
+          type: 'goal', 
+          goal: goalText, 
+          provider: llmProvider, 
+          model: targetModel,
+          model_name: targetModel,
+          api_key: apiKey 
+        })
       });
       const data = await res.json();
       
@@ -211,10 +314,11 @@ export default function App() {
           setChatHistory(prev => [...prev, { sender: 'agent', text: data.message || `Mission dispatched. Task ID: ${data.task_id}` }]);
         }
       } else {
-        setChatHistory(prev => [...prev, { sender: 'agent', text: `Error: ${data.error || data.message || 'Failed to dispatch mission'}` }]);
+        const errMsg = data.error || data.message || data.output || 'Failed to dispatch mission';
+        setChatHistory(prev => [...prev, { sender: 'agent', text: `Error: ${errMsg}` }]);
       }
     } catch (err) {
-      setChatHistory(prev => [...prev, { sender: 'agent', text: `[LOCAL EMULATION] Dispatched directive locally.` }]);
+      setChatHistory(prev => [...prev, { sender: 'agent', text: `Error: Failed to reach agent service (${err.message || 'Connection error'})` }]);
     } finally {
       setIsExecuting(false);
     }
@@ -950,42 +1054,157 @@ export default function App() {
     </div>
   );
 
-  const renderModelConfig = () => (
-    <div style={styles.loginContainer}>
-      <div style={{...styles.loginCard, width: '420px'}}>
-        <h2 style={{ margin: '0 0 8px 0', fontSize: '20px' }}>Model Configuration</h2>
-        <p style={{ color: '#a1a1aa', fontSize: '14px', marginBottom: '24px' }}>Configure your local or cloud LLM provider for autonomous AI capabilities.</p>
-        
-        <label style={{display: 'block', marginBottom: '8px', fontSize: '13px', color: '#e4e4e7'}}>AI Provider</label>
-        <select 
-          style={{...styles.input, WebkitAppearance: 'none', background: '#18181b', color: '#fff'}} 
-          value={llmProvider} 
-          onChange={e => setLlmProvider(e.target.value)}
-        >
-          <option style={{ background: '#18181b', color: '#fff' }} value="openai">OpenAI (GPT-4o)</option>
-          <option style={{ background: '#18181b', color: '#fff' }} value="gemini">Google (Gemini 2.5 Pro)</option>
-          <option style={{ background: '#18181b', color: '#fff' }} value="anthropic">Anthropic (Claude 3.5 Sonnet)</option>
-          <option style={{ background: '#18181b', color: '#fff' }} value="groq">Groq (Llama 3)</option>
-          <option style={{ background: '#18181b', color: '#fff' }} value="ollama">Ollama (Local Inference)</option>
-        </select>
-        
-        <label style={{display: 'block', marginBottom: '8px', fontSize: '13px', color: '#e4e4e7'}}>API Key</label>
-        <input 
-          style={styles.input} 
-          type="password" 
-          placeholder={`Enter your ${llmProvider} API key...`} 
-          value={apiKey} 
-          onChange={e => setApiKey(e.target.value)} 
-        />
-        
-        <button style={styles.button} onClick={() => {
-          localStorage.setItem('penta_llm_provider', llmProvider);
-          localStorage.setItem('penta_api_key', apiKey);
-          setCurrentView('chat');
-        }}>Save Configuration</button>
+  const renderModelConfig = () => {
+    const currentMeta = PROVIDER_INFO[llmProvider] || PROVIDER_INFO.gemini;
+
+    return (
+      <div style={styles.loginContainer}>
+        <div style={{ ...styles.loginCard, width: '460px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+            <h2 style={{ margin: 0, fontSize: '20px' }}>Model Configuration</h2>
+            <button 
+              onClick={() => setCurrentView('chat')}
+              style={{ background: 'transparent', border: 'none', color: '#a1a1aa', cursor: 'pointer', fontSize: '18px', padding: '4px' }}
+              title="Close"
+            >
+              ✕
+            </button>
+          </div>
+          <p style={{ color: '#a1a1aa', fontSize: '13px', marginBottom: '20px' }}>
+            Configure your local or cloud LLM provider for autonomous AI capabilities.
+          </p>
+          
+          <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', color: '#e4e4e7', fontWeight: '500' }}>
+            AI Provider
+          </label>
+          <select 
+            style={{ ...styles.input, WebkitAppearance: 'none', background: '#18181b', color: '#fff', cursor: 'pointer' }} 
+            value={llmProvider} 
+            onChange={e => {
+              setLlmProvider(e.target.value);
+              setConfigSaveStatus('');
+            }}
+          >
+            <option style={{ background: '#18181b', color: '#fff' }} value="groq">Groq (Llama 3.3 - Fast & Free)</option>
+            <option style={{ background: '#18181b', color: '#fff' }} value="gemini">Google (Gemini 2.5 Flash / Pro)</option>
+            <option style={{ background: '#18181b', color: '#fff' }} value="openai">OpenAI (GPT-4o / GPT-4o-mini)</option>
+            <option style={{ background: '#18181b', color: '#fff' }} value="anthropic">Anthropic (Claude 3.5 Sonnet)</option>
+            <option style={{ background: '#18181b', color: '#fff' }} value="deepseek">DeepSeek (V3 / R1)</option>
+            <option style={{ background: '#18181b', color: '#fff' }} value="openrouter">OpenRouter (Unified Gateway)</option>
+            <option style={{ background: '#18181b', color: '#fff' }} value="ollama">Ollama (Local Offline Inference)</option>
+          </select>
+          
+          <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', color: '#e4e4e7', fontWeight: '500' }}>
+            {llmProvider === 'ollama' ? 'Local Model Name' : 'API Key'}
+          </label>
+          {llmProvider === 'ollama' ? (
+            <input 
+              style={styles.input} 
+              type="text" 
+              placeholder="e.g. llama3.2, mistral, qwen2.5" 
+              value={apiKey} 
+              onChange={e => setApiKey(e.target.value)} 
+            />
+          ) : (
+            <input 
+              style={styles.input} 
+              type="password" 
+              placeholder={`Paste your ${currentMeta.name} API key...`} 
+              value={apiKey} 
+              onChange={e => setApiKey(e.target.value)} 
+            />
+          )}
+          
+          {/* Direct API Key Retrieval Link Box */}
+          <div style={{
+            marginTop: '-4px',
+            marginBottom: '18px',
+            padding: '12px 14px',
+            background: 'rgba(59, 130, 246, 0.08)',
+            border: '1px solid rgba(59, 130, 246, 0.25)',
+            borderRadius: '8px'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+              <span style={{ color: '#a1a1aa', fontSize: '12px', fontWeight: '500' }}>
+                {llmProvider === 'ollama' ? 'Get local engine:' : `Need a ${currentMeta.name} key?`}
+              </span>
+              <a 
+                href={currentMeta.keyUrl} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                style={{
+                  color: '#60a5fa',
+                  textDecoration: 'none',
+                  fontWeight: '600',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  fontSize: '12px'
+                }}
+                onMouseEnter={e => e.currentTarget.style.textDecoration = 'underline'}
+                onMouseLeave={e => e.currentTarget.style.textDecoration = 'none'}
+              >
+                🔑 {currentMeta.buttonText} ↗
+              </a>
+            </div>
+            <div style={{ marginTop: '6px', fontSize: '11px', color: '#71717a', lineHeight: '1.4' }}>
+              {currentMeta.description}
+            </div>
+            <div style={{ marginTop: '6px', fontSize: '11px', color: '#94a3b8' }}>
+              Direct Link:{' '}
+              <a 
+                href={currentMeta.keyUrl} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                style={{ color: '#38bdf8', wordBreak: 'break-all' }}
+              >
+                {currentMeta.keyUrl}
+              </a>
+            </div>
+          </div>
+
+          {configSaveStatus && (
+            <div style={{
+              background: 'rgba(16, 185, 129, 0.12)',
+              border: '1px solid rgba(16, 185, 129, 0.3)',
+              color: '#34d399',
+              padding: '10px 12px',
+              borderRadius: '8px',
+              fontSize: '12px',
+              marginBottom: '16px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}>
+              ✓ {configSaveStatus}
+            </div>
+          )}
+          
+          <button 
+            style={{ ...styles.button, opacity: isSavingConfig ? 0.7 : 1 }} 
+            disabled={isSavingConfig}
+            onClick={handleSaveModelConfig}
+          >
+            {isSavingConfig ? 'Saving & Syncing...' : 'Save Configuration'}
+          </button>
+
+          {/* Direct link below form */}
+          <div style={{ marginTop: '14px', textAlign: 'center' }}>
+            <a 
+              href={currentMeta.keyUrl} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              style={{ color: '#71717a', fontSize: '11px', textDecoration: 'none' }}
+              onMouseEnter={e => e.currentTarget.style.color = '#a1a1aa'}
+              onMouseLeave={e => e.currentTarget.style.color = '#71717a'}
+            >
+              Get {currentMeta.name} API Key directly at {currentMeta.label}
+            </a>
+          </div>
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   const handleUpgrade = async () => {
     setIsUpgrading(true);

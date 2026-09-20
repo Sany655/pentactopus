@@ -254,6 +254,8 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
 
         elif path == "/api/pc/agent":
             self.handle_pc_agent(data)
+        elif path == "/api/mobile/agent":
+            self.handle_mobile_agent(data)
         elif path == "/api/mobile/click":
             self.handle_mobile_click(data)
 
@@ -613,12 +615,25 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
 
     def handle_pc_agent(self, data):
         goal = data.get("goal", "Show PC desktop")
-        provider = data.get("provider") or os.environ.get("MODEL_PROVIDER", "gemini")
-        model_name = data.get("model") or os.environ.get("MODEL_NAME", "gemini-2.5-flash")
-        api_key = data.get("api_key") or os.environ.get("MODEL_API_KEY")
+        provider = (data.get("provider") or os.environ.get("MODEL_PROVIDER", "gemini")).lower().strip()
+        meta = PROVIDER_REGISTRY.get(provider, PROVIDER_REGISTRY.get("gemini", {}))
+        
+        req_model = data.get("model") or data.get("model_name")
+        if req_model and not (provider != "gemini" and "gemini" in req_model.lower()):
+            model_name = req_model
+        elif provider == os.environ.get("MODEL_PROVIDER", "gemini").lower() and os.environ.get("MODEL_NAME"):
+            model_name = os.environ.get("MODEL_NAME")
+        else:
+            model_name = meta.get("default_model")
+            
+        env_key_var = meta.get("env_key")
+        active_key = data.get("api_key") or (os.environ.get(env_key_var) if env_key_var else None) or os.environ.get("MODEL_API_KEY")
+        if active_key and env_key_var:
+            os.environ[env_key_var] = active_key
+            
         dry_run = data.get("dry_run", False)
         try:
-            m = get_model_provider(provider, model_name=model_name, api_key=api_key, enable_fallback=not bool(api_key))
+            m = get_model_provider(provider, model_name=model_name, api_key=active_key, enable_fallback=not bool(active_key))
             agent = PCAgent(model_provider=m, dry_run=dry_run)
             res = agent.run_goal(goal)
             steps_log = []
@@ -629,6 +644,48 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
             final_msg = res.get("message", "Task finished.")
             res["output"] = "\n".join(steps_log) + f"\n\n[COMPLETION] {final_msg}"
             self._send_json(res)
+        except Exception as e:
+            self._send_json({"success": False, "error": str(e), "output": str(e)})
+
+    def handle_mobile_agent(self, data):
+        goal = data.get("goal") or data.get("prompt", "Explore phone screen")
+        provider = (data.get("provider") or os.environ.get("MODEL_PROVIDER", "gemini")).lower().strip()
+        meta = PROVIDER_REGISTRY.get(provider, PROVIDER_REGISTRY.get("gemini", {}))
+        
+        req_model = data.get("model") or data.get("model_name")
+        if req_model and not (provider != "gemini" and "gemini" in req_model.lower()):
+            model_name = req_model
+        elif provider == os.environ.get("MODEL_PROVIDER", "gemini").lower() and os.environ.get("MODEL_NAME"):
+            model_name = os.environ.get("MODEL_NAME")
+        else:
+            model_name = meta.get("default_model")
+            
+        env_key_var = meta.get("env_key")
+        active_key = data.get("api_key") or (os.environ.get(env_key_var) if env_key_var else None) or os.environ.get("MODEL_API_KEY")
+        if active_key and env_key_var:
+            os.environ[env_key_var] = active_key
+            
+        dry_run = data.get("dry_run", False)
+        active_serial = self.get_target_serial()
+        try:
+            m = get_model_provider(provider, model_name=model_name, api_key=active_key, enable_fallback=not bool(active_key))
+            if active_serial:
+                from agent.core import AndroidAgent
+                adb = ADBClient(device_serial=active_serial)
+                agent = AndroidAgent(model_provider=m, adb_client=adb, dry_run=dry_run)
+                res = agent.run_goal(goal)
+                self._send_json({
+                    "success": res.get("success", False),
+                    "platform": "android",
+                    "device": active_serial,
+                    "output": res.get("message", json.dumps(res)),
+                    "steps": res.get("steps", [])
+                })
+            else:
+                self._send_json({
+                    "success": False,
+                    "error": "No Android device connected via USB or Wi-Fi. Please connect your phone or switch agent target to PC."
+                })
         except Exception as e:
             self._send_json({"success": False, "error": str(e), "output": str(e)})
 
@@ -753,8 +810,16 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
 
     def handle_save_config(self, data):
         env_file = os.path.join(BASE_DIR, ".env")
-        provider = data.get("provider", "gemini").strip()
-        model_name = data.get("model_name", "gemini-2.5-flash").strip()
+        provider = data.get("provider", "gemini").strip().lower()
+        meta = PROVIDER_REGISTRY.get(provider, PROVIDER_REGISTRY.get("gemini", {}))
+        default_model = meta.get("default_model", "gemini-2.5-flash")
+        
+        req_model = data.get("model_name") or data.get("model")
+        if req_model and not (provider != "gemini" and "gemini" in req_model.lower()):
+            model_name = req_model
+        else:
+            model_name = default_model
+            
         keys = data.get("keys", {})
 
         current_env = {}
@@ -769,15 +834,7 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
         current_env["MODEL_NAME"] = model_name
 
         if data.get("api_key"):
-            key_map = {
-                "gemini": "GEMINI_API_KEY",
-                "openai": "OPENAI_API_KEY",
-                "anthropic": "ANTHROPIC_API_KEY",
-                "deepseek": "DEEPSEEK_API_KEY",
-                "groq": "GROQ_API_KEY",
-                "openrouter": "OPENROUTER_API_KEY"
-            }
-            target_var = key_map.get(provider, "GEMINI_API_KEY")
+            target_var = meta.get("env_key") or f"{provider.upper()}_API_KEY"
             current_env[target_var] = data.get("api_key").strip()
 
         for k, v in keys.items():
@@ -791,7 +848,7 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
         for k, v in current_env.items():
             os.environ[k] = v
 
-        self._send_json({"status": "saved", "message": "Unified Model Configuration saved to .env"})
+        self._send_json({"status": "saved", "message": f"Unified Model Configuration saved ({provider} / {model_name})"})
 
     def handle_test_model(self, data):
         provider = data.get("provider", "gemini")
@@ -861,14 +918,28 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
 
     def handle_run_agent(self, data):
         goal = data.get("goal") or data.get("prompt", "Show PC desktop")
-        provider = data.get("provider") or os.environ.get("MODEL_PROVIDER", "gemini")
-        model_name = data.get("model") or os.environ.get("MODEL_NAME", "gemini-2.5-flash")
+        provider = (data.get("provider") or os.environ.get("MODEL_PROVIDER", "gemini")).lower().strip()
+        meta = PROVIDER_REGISTRY.get(provider, PROVIDER_REGISTRY.get("gemini", {}))
+        
+        req_model = data.get("model") or data.get("model_name")
+        if req_model and not (provider != "gemini" and "gemini" in req_model.lower()):
+            model_name = req_model
+        elif provider == os.environ.get("MODEL_PROVIDER", "gemini").lower() and os.environ.get("MODEL_NAME"):
+            model_name = os.environ.get("MODEL_NAME")
+        else:
+            model_name = meta.get("default_model")
+            
+        env_key_var = meta.get("env_key")
+        active_key = data.get("api_key") or (os.environ.get(env_key_var) if env_key_var else None) or os.environ.get("MODEL_API_KEY")
+        if active_key and env_key_var:
+            os.environ[env_key_var] = active_key
+
         dry_run = data.get("dry_run", False)
         target = data.get("target") or data.get("device", "auto")
         active_serial = self.get_target_serial()
 
         try:
-            m = get_model_provider(provider, model_name=model_name)
+            m = get_model_provider(provider, model_name=model_name, api_key=active_key, enable_fallback=not bool(active_key))
             
             # Determine platform: PC Desktop vs Android Phone
             is_android_target = (target == "phone") or (target == "auto" and bool(active_serial))

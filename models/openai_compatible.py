@@ -70,7 +70,18 @@ class OpenAICompatibleProvider(BaseModelProvider):
         
         env_var = ENV_KEY_MAP.get(self.flavor, f"{self.flavor.upper()}_API_KEY")
         key = api_key or os.environ.get(env_var) or os.environ.get(f"{self.flavor.upper()}_KEY")
-        chosen_model = model_name or DEFAULT_MODEL_MAP.get(self.flavor, "gpt-4o-mini")
+        default_model = DEFAULT_MODEL_MAP.get(self.flavor, "gpt-4o-mini")
+        
+        # Sanitize model name: ensure we don't pass a Gemini model name to Groq/OpenAI/DeepSeek
+        if not model_name or ("gemini" in model_name.lower() and self.flavor != "openrouter"):
+            chosen_model = default_model
+        else:
+            chosen_model = model_name
+        
+        # Check multimodal capability
+        self.multimodal = (self.flavor in ("openai", "openrouter")) and any(
+            v in chosen_model.lower() for v in ["vision", "4o", "gemini", "claude"]
+        )
         
         super().__init__(chosen_model, key)
 
@@ -82,21 +93,23 @@ class OpenAICompatibleProvider(BaseModelProvider):
         history: Optional[List[Dict[str, Any]]] = None
     ) -> Dict[str, Any]:
         if not self.api_key:
-            raise ValueError(f"API key for '{self.flavor}' is missing. Set {ENV_KEY_MAP.get(self.flavor, 'API key')} in .env")
+            raise ValueError(f"API key for '{self.flavor}' is missing. Set {ENV_KEY_MAP.get(self.flavor, 'API key')} in .env or Model Configuration")
 
         prompt_text = f"Goal: {goal}\n\nCurrent UI State:\n{screen_state_text}\n\nWhat is the single next JSON action?"
 
-        content_parts: List[Dict[str, Any]] = [{"type": "text", "text": prompt_text}]
-        if screenshot_bytes:
+        if self.multimodal and screenshot_bytes:
             b64_img = base64.b64encode(screenshot_bytes).decode("utf-8")
-            content_parts.append({
-                "type": "image_url",
-                "image_url": {"url": f"data:image/png;base64,{b64_img}"}
-            })
+            user_content = [
+                {"type": "text", "text": prompt_text},
+                {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{b64_img}"}}
+            ]
+        else:
+            # Text-only models like Groq Llama-3.3 or DeepSeek require text content without image_url
+            user_content = prompt_text
 
         messages = [
             {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": content_parts}
+            {"role": "user", "content": user_content}
         ]
 
         payload: Dict[str, Any] = {
@@ -111,7 +124,8 @@ class OpenAICompatibleProvider(BaseModelProvider):
 
         headers = {
             "Content-Type": "application/json",
-            "Authorization": f"Bearer {self.api_key}"
+            "Authorization": f"Bearer {self.api_key}",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36 Pentactopus/2.5.7"
         }
         if self.flavor == "openrouter":
             headers["HTTP-Referer"] = "https://github.com/ai-android-agent"
@@ -124,10 +138,31 @@ class OpenAICompatibleProvider(BaseModelProvider):
             method="POST"
         )
 
-        with urllib.request.urlopen(req, timeout=35) as resp:
-            raw_resp = json.loads(resp.read().decode("utf-8"))
+        try:
+            with urllib.request.urlopen(req, timeout=35) as resp:
+                raw_resp = json.loads(resp.read().decode("utf-8"))
+        except urllib.error.HTTPError as e:
+            try:
+                body = e.read().decode("utf-8")
+                err_data = json.loads(body)
+                err_msg = (
+                    err_data.get("error", {}).get("message")
+                    or err_data.get("message")
+                    or body
+                )
+                raise ValueError(f"{self.flavor.capitalize()} API Error ({e.code}): {err_msg}")
+            except Exception as parse_err:
+                if isinstance(parse_err, ValueError):
+                    raise parse_err
+                raise ValueError(f"{self.flavor.capitalize()} HTTP Error {e.code}: {e.reason}")
+        except urllib.error.URLError as e:
+            raise ValueError(f"Failed to connect to {self.flavor} at {self.endpoint}: {e.reason}")
 
-        text = raw_resp["choices"][0]["message"]["content"].strip()
+        try:
+            text = raw_resp["choices"][0]["message"]["content"].strip()
+        except (KeyError, IndexError) as e:
+            raise ValueError(f"Unexpected response format from {self.flavor}: {raw_resp}")
+
         return self._extract_json(text)
 
     def _extract_json(self, text: str) -> Dict[str, Any]:
@@ -141,3 +176,4 @@ class OpenAICompatibleProvider(BaseModelProvider):
             if m:
                 return json.loads(m.group(0))
             raise ValueError(f"Could not parse JSON action from {self.flavor} response: {text}")
+
