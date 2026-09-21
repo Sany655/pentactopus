@@ -96,11 +96,20 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
                 self.send_header("Access-Control-Allow-Origin", "*")
                 self.end_headers()
                 self.wfile.write(content)
+                return
             else:
                 self.send_response(200)
                 self.send_header("Content-type", "text/html; charset=utf-8")
                 self.end_headers()
                 self.wfile.write(LOCAL_UI_HTML.encode("utf-8"))
+                return
+
+        elif path == "/local":
+            self.send_response(200)
+            self.send_header("Content-type", "text/html; charset=utf-8")
+            self.end_headers()
+            self.wfile.write(LOCAL_UI_HTML.encode("utf-8"))
+            return
 
         elif path.startswith("/assets/"):
             asset_path = os.path.join(dist_dir, path.lstrip("/"))
@@ -113,8 +122,10 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
                 self.send_header("Access-Control-Allow-Origin", "*")
                 self.end_headers()
                 self.wfile.write(content)
+                return
             else:
                 self.send_error(404, "Asset not found")
+                return
 
         elif path == "/api/auth/me":
             auth = self.headers.get("Authorization", "")
@@ -221,6 +232,9 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
             target_id = query.get("target_id", [""])[0]
             signals = SignalingHub.poll_signals(target_id)
             self._send_json({"signals": signals})
+
+        elif path == "/api/webrtc/ice-servers":
+            self._send_json({"iceServers": SignalingHub.get_ice_servers()})
 
         elif path.startswith("/download/"):
             fname = os.path.basename(path)

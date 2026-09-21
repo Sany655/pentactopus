@@ -216,8 +216,25 @@ export default function App() {
   const [llmProvider, setLlmProvider] = useState(localStorage.getItem('penta_llm_provider') || 'groq');
   const [apiKey, setApiKey] = useState(localStorage.getItem('penta_api_key') || '');
   const [visionQuality, setVisionQuality] = useState('high');
+  const [turnUrl, setTurnUrl] = useState(localStorage.getItem('penta_turn_url') || '');
+  const [turnUser, setTurnUser] = useState(localStorage.getItem('penta_turn_user') || '');
+  const [turnCred, setTurnCred] = useState(localStorage.getItem('penta_turn_cred') || '');
   const [isSavingConfig, setIsSavingConfig] = useState(false);
   const [configSaveStatus, setConfigSaveStatus] = useState('');
+
+  const getEffectiveIceServers = () => {
+    const servers = [
+      { urls: 'stun:stun.l.google.com:19302' },
+      { urls: 'stun:stun1.l.google.com:19302' }
+    ];
+    if (turnUrl.trim()) {
+      const entry = { urls: turnUrl.trim() };
+      if (turnUser.trim()) entry.username = turnUser.trim();
+      if (turnCred.trim()) entry.credential = turnCred.trim();
+      servers.push(entry);
+    }
+    return servers;
+  };
   
   // Support & FAQ State
   const [supportName, setSupportName] = useState('');
@@ -570,7 +587,7 @@ export default function App() {
 
   const startWebRTCSession = async () => {
     setRtcConnectionState('connecting');
-    const configuration = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
+    const configuration = { iceServers: getEffectiveIceServers() };
     const pc = new RTCPeerConnection(configuration);
     peerConnection.current = pc;
     
@@ -668,7 +685,7 @@ export default function App() {
 
   const acceptOffer = async (client_id, offerPayload) => {
     try {
-      const configuration = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
+      const configuration = { iceServers: getEffectiveIceServers() };
       const pc = new RTCPeerConnection(configuration);
       peerConnection.current = pc;
       
@@ -2333,7 +2350,7 @@ export default function App() {
         
         <label style={{display: 'block', marginBottom: '8px', fontSize: '13px', color: '#e4e4e7'}}>Remote Viewport Quality</label>
         <select 
-          style={{...styles.input, WebkitAppearance: 'none', marginBottom: '24px', background: '#18181b', color: '#fff'}} 
+          style={{...styles.input, WebkitAppearance: 'none', marginBottom: '16px', background: '#18181b', color: '#fff'}} 
           value={visionQuality} 
           onChange={e => setVisionQuality(e.target.value)}
         >
@@ -2341,8 +2358,50 @@ export default function App() {
           <option style={{ background: '#18181b', color: '#fff' }} value="medium">Medium (720p, 30fps)</option>
           <option style={{ background: '#18181b', color: '#fff' }} value="low">Low (480p, Low Latency)</option>
         </select>
+
+        <div style={{borderTop: '1px solid #27272a', paddingTop: '16px', marginTop: '16px', marginBottom: '16px'}}>
+          <label style={{display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: 600, color: '#e4e4e7'}}>
+            WebRTC Relay / TURN Server (Optional)
+          </label>
+          <p style={{margin: '0 0 10px 0', fontSize: '12px', color: '#71717a'}}>
+            For symmetric NAT traversal and cellular/corporate firewalls.
+          </p>
+          <input 
+            type="text"
+            placeholder="turn:turn.example.com:3478"
+            value={turnUrl}
+            onChange={e => setTurnUrl(e.target.value)}
+            style={{...styles.input, marginBottom: '8px'}}
+          />
+          <div style={{display: 'flex', gap: '8px', marginBottom: '8px'}}>
+            <input 
+              type="text"
+              placeholder="Username"
+              value={turnUser}
+              onChange={e => setTurnUser(e.target.value)}
+              style={{...styles.input, flex: 1, marginBottom: 0}}
+            />
+            <input 
+              type="password"
+              placeholder="Credential"
+              value={turnCred}
+              onChange={e => setTurnCred(e.target.value)}
+              style={{...styles.input, flex: 1, marginBottom: 0}}
+            />
+          </div>
+        </div>
         
-        <button style={styles.button} onClick={() => setCurrentView('chat')}>Save Settings</button>
+        <button 
+          style={styles.button} 
+          onClick={() => {
+            localStorage.setItem('penta_turn_url', turnUrl);
+            localStorage.setItem('penta_turn_user', turnUser);
+            localStorage.setItem('penta_turn_cred', turnCred);
+            setCurrentView('chat');
+          }}
+        >
+          Save Settings
+        </button>
       </div>
     </div>
   );

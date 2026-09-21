@@ -266,6 +266,12 @@ class handler(BaseHTTPRequestHandler):
             self.wfile.write(json.dumps({"signals": signals}).encode("utf-8"))
             return
 
+        if path == "/api/webrtc/ice-servers":
+            ice_servers = SignalingHub.get_ice_servers()
+            self._send_cors(200)
+            self.wfile.write(json.dumps({"iceServers": ice_servers}).encode("utf-8"))
+            return
+
         self._send_cors(404)
         self.wfile.write(json.dumps({"error": "Endpoint not found"}).encode("utf-8"))
 
@@ -670,3 +676,13 @@ class handler(BaseHTTPRequestHandler):
 
         self._send_cors(404)
         self.wfile.write(json.dumps({"error": "Endpoint not found"}).encode("utf-8"))
+
+if __name__ == "__main__":
+    from http.server import HTTPServer
+    port = int(os.environ.get("PORT", 5051))
+    print(f"Starting Pentactopus Web Server on http://localhost:{port}...")
+    server = HTTPServer(("0.0.0.0", port), handler)
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        print("Web server stopped.")

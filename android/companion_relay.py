@@ -108,8 +108,31 @@ class AndroidCompanionRelay:
         except Exception:
             return False
 
+    def _try_accessibility_service(self, task: Dict[str, Any]) -> Optional[Tuple[bool, str]]:
+        """Attempt to dispatch action via native PentaAccessibilityService running on loopback 18888."""
+        try:
+            req = urllib.request.Request(
+                "http://127.0.0.1:18888/",
+                data=json.dumps(task).encode("utf-8"),
+                headers={"Content-Type": "application/json"},
+                method="POST"
+            )
+            with urllib.request.urlopen(req, timeout=1) as resp:
+                if resp.status == 200:
+                    data = json.loads(resp.read().decode("utf-8"))
+                    return bool(data.get("success")), data.get("message", "Dispatched via Accessibility Service")
+        except Exception:
+            pass
+        return None
+
     def perform_accessibility_action(self, task: Dict[str, Any]) -> Tuple[bool, str]:
         """Execute touch, gesture, or text input on the Android device."""
+        # 1. Prefer native Android Accessibility Service if active
+        a11y_result = self._try_accessibility_service(task)
+        if a11y_result is not None:
+            return a11y_result
+
+        # 2. Fallback to shell / Termux input commands
         task_type = task.get("type", task.get("action", ""))
         try:
             if task_type in ("tap", "click"):

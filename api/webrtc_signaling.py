@@ -6,12 +6,43 @@ Works within Vercel Serverless constraints by using a polling queue.
 """
 
 import time
+import os
+import json
 from typing import Dict, List, Any
 
 class SignalingHub:
     # In-memory store for signaling messages.
     # Format: { "device_id_or_session_id": [ {type, sender, payload, timestamp}, ... ] }
     _messages: Dict[str, List[Dict[str, Any]]] = {}
+
+    @classmethod
+    def get_ice_servers(cls) -> List[Dict[str, Any]]:
+        """Return WebRTC ICE configuration including STUN and optional TURN relay servers."""
+        turn_json = os.environ.get("TURN_SERVERS_JSON")
+        if turn_json:
+            try:
+                custom = json.loads(turn_json)
+                if isinstance(custom, list):
+                    return custom
+            except Exception:
+                pass
+
+        ice_servers: List[Dict[str, Any]] = [
+            {"urls": ["stun:stun.l.google.com:19302", "stun:stun1.l.google.com:19302"]}
+        ]
+
+        coturn_url = os.environ.get("COTURN_URL")
+        if coturn_url:
+            turn_entry: Dict[str, Any] = {"urls": coturn_url}
+            username = os.environ.get("COTURN_USERNAME")
+            credential = os.environ.get("COTURN_CREDENTIAL")
+            if username:
+                turn_entry["username"] = username
+            if credential:
+                turn_entry["credential"] = credential
+            ice_servers.append(turn_entry)
+
+        return ice_servers
 
     @classmethod
     def push_signal(cls, target_id: str, sender_id: str, signal_type: str, payload: Any) -> None:

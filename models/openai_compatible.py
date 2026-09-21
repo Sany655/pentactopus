@@ -77,7 +77,7 @@ ENV_KEY_MAP = {
 DEFAULT_MODEL_MAP = {
     "openai": "gpt-4o-mini",
     "deepseek": "deepseek-chat",
-    "groq": "openai/gpt-oss-120b",
+    "groq": "llama-3.3-70b-versatile",
     "openrouter": "google/gemini-2.5-flash",
 }
 
