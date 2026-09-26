@@ -177,7 +177,7 @@ const SUGGESTIONS = [
 
 export default function App() {
   const [currentView, setCurrentView] = useState('login');
-  const [serverUrl, setServerUrl] = useState('http://localhost:5050');
+  const [serverUrl, setServerUrl] = useState(localStorage.getItem('penta_server_url') || 'http://localhost:5050');
   
   // Auth state
   const [email, setEmail] = useState('');
@@ -338,6 +338,9 @@ export default function App() {
 
   const handleLogin = async (e) => {
     e.preventDefault();
+    setLoginError('');
+    // Persist the server URL so it survives app restarts
+    localStorage.setItem('penta_server_url', serverUrl);
     try {
       const res = await fetch(`${serverUrl}/api/auth/login`, {
         method: 'POST',
@@ -1017,8 +1020,35 @@ export default function App() {
         
         {loginError && <div style={{ background: 'rgba(239,68,68,0.1)', color: '#ef4444', padding: '10px', borderRadius: '6px', fontSize: '13px', marginBottom: '16px' }}>{loginError}</div>}
         
-        <input style={styles.input} type="email" placeholder="Email Address" value={email} onChange={e => setEmail(e.target.value)} required />
-        <input style={styles.input} type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} required />
+        <input
+          style={styles.input}
+          type="email"
+          placeholder="Email Address"
+          value={email}
+          onChange={e => { setEmail(e.target.value); setLoginError(''); }}
+          required
+        />
+        <input
+          style={styles.input}
+          type="password"
+          placeholder="Password"
+          value={password}
+          onChange={e => { setPassword(e.target.value); setLoginError(''); }}
+          required
+        />
+
+        {/* Server URL — shown collapsed; user can expand to change target server */}
+        <details style={{ marginBottom: '16px' }}>
+          <summary style={{ fontSize: '12px', color: '#71717a', cursor: 'pointer', userSelect: 'none' }}>Advanced: Server URL</summary>
+          <input
+            style={{ ...styles.input, marginTop: '8px', marginBottom: 0, fontSize: '13px' }}
+            type="text"
+            placeholder="http://localhost:5050"
+            value={serverUrl}
+            onChange={e => setServerUrl(e.target.value)}
+          />
+          <p style={{ fontSize: '11px', color: '#52525b', margin: '4px 0 0 0' }}>Default: http://localhost:5050 — change if your Penta server runs elsewhere.</p>
+        </details>
         
         <button style={styles.button} type="submit">Sign In</button>
         
@@ -2347,6 +2377,16 @@ export default function App() {
       <div style={{...styles.loginCard, width: '420px'}}>
         <h2 style={{ margin: '0 0 8px 0', fontSize: '20px' }}>App Settings</h2>
         <p style={{ color: '#a1a1aa', fontSize: '14px', marginBottom: '24px' }}>General application preferences.</p>
+
+        <label style={{display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: 600, color: '#e4e4e7'}}>Backend Server URL</label>
+        <input
+          style={{...styles.input, marginBottom: '4px'}}
+          type="text"
+          placeholder="http://localhost:5050"
+          value={serverUrl}
+          onChange={e => setServerUrl(e.target.value)}
+        />
+        <p style={{ fontSize: '11px', color: '#52525b', marginBottom: '16px' }}>Where your Penta backend runs. Default: http://localhost:5050</p>
         
         <label style={{display: 'block', marginBottom: '8px', fontSize: '13px', color: '#e4e4e7'}}>Remote Viewport Quality</label>
         <select 
@@ -2394,6 +2434,7 @@ export default function App() {
         <button 
           style={styles.button} 
           onClick={() => {
+            localStorage.setItem('penta_server_url', serverUrl);
             localStorage.setItem('penta_turn_url', turnUrl);
             localStorage.setItem('penta_turn_user', turnUser);
             localStorage.setItem('penta_turn_cred', turnCred);
