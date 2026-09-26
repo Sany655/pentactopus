@@ -64,3 +64,9 @@ def test_android_package_map():
     assert "settings" in DeviceHub.ANDROID_APP_PACKAGES
     assert "chrome" in DeviceHub.ANDROID_APP_PACKAGES
     assert DeviceHub.ANDROID_APP_PACKAGES["settings"] == "com.android.settings"
+
+def test_companion_relay_imports_and_has_hub_registration():
+    from android.companion_relay import AndroidCompanionRelay
+    relay = AndroidCompanionRelay.__new__(AndroidCompanionRelay)
+    assert hasattr(relay, 'register_with_hub') or hasattr(relay, 'register_device')
+

@@ -17,54 +17,74 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: 'npm'
+          cache-dependency-path: penta-app/package-lock.json
 
-      - name: Install Rust
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Install Rust + Android targets
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: aarch64-linux-android,armv7-linux-androideabi,i686-linux-android,x86_64-linux-android
 
-      - name: Setup Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'zulu'
-          java-version: '17'
+      - name: Install cargo-tauri CLI v2
+        run: cargo install tauri-cli --version "^2.0" --locked
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Setup Android NDK
+      - name: Install Android NDK 25 via sdkmanager
         run: |
-          echo "y" | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install "ndk;25.2.9519653"
-          echo "ANDROID_NDK_ROOT=$ANDROID_HOME/ndk/25.2.9519653" >> $GITHUB_ENV
+          yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager \
+            "ndk;25.2.9519653" \
+            "platforms;android-33" \
+            "build-tools;33.0.2"
+          echo "ANDROID_NDK_HOME=$ANDROID_SDK_ROOT/ndk/25.2.9519653" >> $GITHUB_ENV
+          echo "NDK_HOME=$ANDROID_SDK_ROOT/ndk/25.2.9519653" >> $GITHUB_ENV
 
-      - name: Install dependencies
+      - name: Install npm dependencies
         working-directory: ./penta-app
-        run: npm install
+        run: npm ci
 
-      - name: Initialize Android Project
+      - name: Build frontend
+        working-directory: ./penta-app
+        run: npm run build
+
+      - name: Inject dummy sidecar stubs
         working-directory: ./penta-app
         run: |
-          if [ ! -d "src-tauri/gen/android" ]; then
-            cargo tauri android init --ci || echo "Init failed but continuing"
-          fi
-        env:
-          ANDROID_NDK_ROOT: ${{ env.ANDROID_NDK_ROOT }}
+          mkdir -p src-tauri/binaries
+          for ARCH in aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android; do
+            touch "src-tauri/binaries/penta_daemon-$ARCH"
+            chmod +x "src-tauri/binaries/penta_daemon-$ARCH"
+          done
 
-      - name: Build Android APK
+      - name: Initialize Tauri Android project
         working-directory: ./penta-app
-        run: cargo tauri android build --apk
+        run: cargo tauri android init --ci
         env:
-          ANDROID_NDK_ROOT: ${{ env.ANDROID_NDK_ROOT }}
+          ANDROID_NDK_HOME: ${{ env.ANDROID_NDK_HOME }}
 
-      - name: Rename and Upload APK Artifact
+      - name: Build Android APK (debug, unsigned)
+        working-directory: ./penta-app
+        run: cargo tauri android build --apk --debug
+        env:
+          ANDROID_NDK_HOME: ${{ env.ANDROID_NDK_HOME }}
+
+      - name: Locate and copy APK
+        id: find_apk
         run: |
           APK=$(find penta-app/src-tauri/gen/android -name "*.apk" | head -1)
-          if [ -n "$APK" ]; then
-            cp "$APK" PentaAssistant.apk
+          if [ -z "$APK" ]; then
+            echo "ERROR: No APK produced by Tauri build!" && exit 1
           fi
+          cp "$APK" PentaAssistant.apk
+          ls -lh PentaAssistant.apk
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: PentaAssistant-Android
           path: PentaAssistant.apk
+          retention-days: 30

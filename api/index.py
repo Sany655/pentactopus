@@ -269,7 +269,7 @@ class handler(BaseHTTPRequestHandler):
         if path == "/api/webrtc/ice-servers":
             ice_servers = SignalingHub.get_ice_servers()
             self._send_cors(200)
-            self.wfile.write(json.dumps({"iceServers": ice_servers}).encode("utf-8"))
+            self.wfile.write(json.dumps({"iceServers": ice_servers, "ice_servers": ice_servers}).encode("utf-8"))
             return
 
         self._send_cors(404)
@@ -448,6 +448,17 @@ class handler(BaseHTTPRequestHandler):
             self.wfile.write(json.dumps({"success": True}).encode("utf-8"))
             return
 
+        if path == "/api/push/notify":
+            from android.push_notifications import send_push
+            result = send_push(
+                device_token=data.get("device_token", ""),
+                title=data.get("title", "Pentactopus"),
+                body=data.get("body", ""),
+                data=data.get("data", {})
+            )
+            self._send_cors(200)
+            self.wfile.write(json.dumps(result).encode("utf-8"))
+            return
 
         # ----------------------------------------------------------------------
         # Billing & Coupons

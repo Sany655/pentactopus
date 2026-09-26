@@ -8,6 +8,7 @@ from android.uiautomator import UIHierarchyParser, UIElement
 from tools.action_schema import validate_action, ValidatedAction, ActionValidationError
 from tools.allowlist import check_security_allowlist, SecurityViolationError
 from models.base import BaseModelProvider
+from vision.screen_analyzer import ScreenAnalyzer
 
 class AndroidAgent:
     def __init__(
@@ -19,6 +20,7 @@ class AndroidAgent:
     ):
         self.model = model_provider
         self.adb = adb_client or ADBClient()
+        self.vision = ScreenAnalyzer()
         self.max_steps = max_steps
         self.dry_run = dry_run
         self.history: List[Dict[str, Any]] = []
@@ -49,6 +51,9 @@ class AndroidAgent:
 
                 try:
                     screenshot_bytes = self.adb.capture_screenshot()
+                    if screenshot_bytes:
+                        analysis = self.vision.analyze(screenshot_bytes)
+                        screen_state_text = f"{screen_state_text}\n{analysis.grid_description}"
                 except ADBError as e:
                     print(f"[WARN] Failed to capture screenshot: {e}")
             else:

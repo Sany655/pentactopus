@@ -60,6 +60,14 @@ class AndroidCompanionRelay:
             pass
         return None
 
+    def register_with_hub(self) -> bool:
+        """Register device with the central DeviceHub."""
+        return self.register()
+
+    def register_device(self) -> bool:
+        """Register device with the central DeviceHub."""
+        return self.register()
+
     def register(self) -> bool:
         """Register device with the central DeviceHub."""
         dev_info = self.get_device_info()

@@ -57,7 +57,8 @@ pentactopus/                         # Project Root
 │
 ├── android/                         # 📱 Android Helpers
 │   ├── __init__.py
-│   ├── companion_relay.py           # 🟡 Companion app relay stub
+│   ├── companion_relay.py           # ✅ Full AndroidCompanionRelay daemon
+│   ├── push_notifications.py        # ✅ FCM push notification sender
 │   └── uiautomator.py              # ✅ UIHierarchyParser — parses XML UI tree
 │
 ├── api/                             # 🌐 Vercel Serverless Backend
@@ -129,7 +130,7 @@ pentactopus/                         # Project Root
 │   ├── vite.config.js               # ✅ Vite bundler config
 │   ├── index.html                   # ✅ HTML entry
 │   ├── src/
-│   │   ├── App.jsx                  # ✅ Full client app (523 lines): login, chat, anydesk, settings
+│   │   ├── App.jsx                  # ✅ Full client app (2440 lines): login, chat, anydesk, settings
 │   │   └── main.jsx                 # ✅ React root mount
 │   └── src-tauri/
 │       ├── tauri.conf.json          # ✅ Tauri v2 config (NSIS+MSI targets, sidecar binary)
@@ -168,8 +169,9 @@ pentactopus/                         # Project Root
 │   ├── test_production_readiness.py # ✅ Prod readiness checks
 │   └── take_screenshots.py          # ✅ Screenshot capture utility
 │
-├── vision/                          # 👁️ Vision Module (placeholder)
-│   └── __init__.py                  # 🔴 Empty — needs implementation
+├── vision/                          # 👁️ Vision Module
+│   ├── __init__.py                  # ✅ Module init
+│   └── screen_analyzer.py           # ✅ ScreenAnalyzer & visual grid reasoning
 │
 ├── main.py                          # ✅ CLI entry point for AndroidAgent
 ├── ui.py                            # ✅ Local dev server (900 lines, port 5050)
@@ -478,10 +480,10 @@ pentactopus/                         # Project Root
 
 | Metric | Value |
 |---|---|
-| **Test Suite** | 77/77 passed (100% pass rate: 70 unit/integration + 7 Playwright E2E) ✅ |
+| **Test Suite** | 82/82 passed (100% pass rate: 75 unit/integration + 7 Playwright E2E) ✅ |
 | **Production Endpoints** | 28/28 verified ✅ |
 | **Model Providers** | 8 configured ✅ |
-| **Python Files** | ~49 source files |
+| **Python Files** | ~55 source files |
 | **Total LOC (est.)** | ~10,000+ lines |
 | **Installer Size** | 20.5 MB (Windows) |
 | **App RAM Usage** | ~35 MB |
@@ -545,4 +547,11 @@ pentactopus/                         # Project Root
 * **Implement:** Updated `api/index.py` with standalone HTTP server, fixed response fallthrough in `ui.py`, added autouse server lifecycle fixture with stale process termination in `test_playwright_ui.py`, and corrected case sensitivity and ID locators.
 * **Test:** Executed `pytest tests/test_playwright_ui.py` (7/7 passing in 28.4s). Executed the entire test suite `pytest tests/ -q` (77/77 passing in 66.4s with 0 failures).
 * **Status:** ✅ Successfully completed and production-ready. All phases 100% verified.
+
+#### 2026-09-27 - Sprint: Android CI Fix, Push Notifications, Vision Integration & DocTree Sync
+* **Objective:** Fix real Android APK CI pipeline, implement push notifications, integrate ScreenAnalyzer into agent loops, fix Groq model name mismatch, and synchronize DocTree.
+* **Implement:** Fixed `build-clients.yml` Android job (removed `setup-android` action), created `android/push_notifications.py`, wired `ScreenAnalyzer` into `pc_agent.py`/`core.py`, fixed Groq model to `llama-3.3-70b-versatile`, updated doctree.
+* **Test:** 82/82 passing.
+* **Status:** ✅ Successfully completed.
+
 

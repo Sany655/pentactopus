@@ -18,8 +18,49 @@ except ImportError:
     PIL_AVAILABLE = False
 
 
+class AnalysisResult:
+    """Structured result of visual screen analysis."""
+    def __init__(
+        self,
+        width: int = 1920,
+        height: int = 1080,
+        grid_description: str = "",
+        regions: Optional[List[Dict[str, Any]]] = None,
+        annotated_bytes: Optional[bytes] = None
+    ):
+        self.width = width
+        self.height = height
+        self.grid_description = grid_description
+        self.regions = regions or []
+        self.annotated_bytes = annotated_bytes
+
+    def __getitem__(self, item):
+        return getattr(self, item)
+
+    def get(self, item, default=None):
+        return getattr(self, item, default)
+
+
 class ScreenAnalyzer:
     """Performs visual analysis, grid decomposition, and coordinate normalization."""
+
+    def analyze(self, image_input: Optional[Any] = None) -> AnalysisResult:
+        """Analyze a screenshot (file path or bytes) and return grid reasoning metadata."""
+        raw_bytes = None
+        if isinstance(image_input, (str, bytes)):
+            if isinstance(image_input, str):
+                try:
+                    with open(image_input, "rb") as f:
+                        raw_bytes = f.read()
+                except Exception:
+                    raw_bytes = None
+            else:
+                raw_bytes = image_input
+
+        w, h = self.get_image_dimensions(raw_bytes) if raw_bytes else (1920, 1080)
+        grid_desc = f"Visual coordinate space: {w}x{h} resolution, 10x10 normalized grid [0.0-1.0]."
+        annotated = self.apply_grid_overlay(raw_bytes) if raw_bytes else None
+        return AnalysisResult(width=w, height=h, grid_description=grid_desc, regions=[], annotated_bytes=annotated)
 
     @staticmethod
     def normalize_point(x: float, y: float, width: int, height: int) -> Tuple[float, float]:

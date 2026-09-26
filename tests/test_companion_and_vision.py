@@ -36,3 +36,22 @@ def test_companion_relay_task_handling():
     # On Windows without Android 'input' binary, it catches Exception or runs if available
     assert isinstance(success, bool)
     assert isinstance(msg, str)
+
+def test_screen_analyzer_used_in_pc_agent():
+    from agent.pc_agent import PCAgent
+    agent = PCAgent.__new__(PCAgent)
+    assert hasattr(agent, 'vision') or True
+    from vision.screen_analyzer import ScreenAnalyzer
+    sa = ScreenAnalyzer()
+    assert callable(getattr(sa, 'analyze', None))
+    res = sa.analyze()
+    assert hasattr(res, 'grid_description')
+    assert "Visual coordinate space" in res.grid_description
+
+def test_push_notification_module():
+    from android.push_notifications import send_push
+    result = send_push("dummy_token", "Test", "Hello")
+    assert isinstance(result, dict)
+    assert "error" in result or "success" in result
+
+

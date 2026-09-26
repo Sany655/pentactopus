@@ -11,6 +11,7 @@ from typing import Dict, Any, Optional, List
 from pc_control.desktop_controller import DesktopController
 from models.router import get_model_provider
 from models.base import BaseModelProvider
+from vision.screen_analyzer import ScreenAnalyzer
 
 logger = logging.getLogger("pc_agent")
 
@@ -47,6 +48,7 @@ class PCAgent:
     ):
         self.model = model_provider or get_model_provider("gemini")
         self.controller = controller or DesktopController()
+        self.vision = ScreenAnalyzer()
         self.max_steps = max_steps
         self.dry_run = dry_run
         self.history: List[Dict[str, Any]] = []
@@ -64,7 +66,8 @@ class PCAgent:
                 screen_jpeg = None
                 logger.warning(f"Could not capture screen: {e}")
 
-            state_desc = f"Screen resolution: {w}x{h}. Step: {step}/{self.max_steps}."
+            analysis = self.vision.analyze(screen_jpeg)
+            state_desc = f"Screen resolution: {w}x{h}. {analysis.grid_description} Step: {step}/{self.max_steps}."
 
             try:
                 action_data = self.model.predict_action(

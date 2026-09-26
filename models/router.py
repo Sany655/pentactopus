@@ -49,8 +49,8 @@ PROVIDER_REGISTRY = {
         "multimodal": False
     },
     "groq": {
-        "class": lambda m, k: OpenAICompatibleProvider(flavor="groq", model_name=m or "openai/gpt-oss-120b", api_key=k),
-        "default_model": "openai/gpt-oss-120b",
+        "class": lambda m, k: OpenAICompatibleProvider(flavor="groq", model_name=m or "llama-3.3-70b-versatile", api_key=k),
+        "default_model": "llama-3.3-70b-versatile",
         "env_key": "GROQ_API_KEY",
         "multimodal": False
     },

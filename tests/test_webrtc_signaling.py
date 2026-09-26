@@ -42,3 +42,10 @@ def test_signaling_isolation_between_targets():
 
 def test_empty_poll_returns_empty_list():
     assert SignalingHub.poll_signals("non_existent_target") == []
+
+def test_ice_servers_endpoint():
+    from api.webrtc_signaling import SignalingHub
+    servers = SignalingHub.get_ice_servers()
+    assert isinstance(servers, list)
+    assert any("stun" in str(s) for s in servers)
+

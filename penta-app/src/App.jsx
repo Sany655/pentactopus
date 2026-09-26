@@ -4,11 +4,11 @@ import MarkdownRenderer from './components/MarkdownRenderer';
 const PROVIDER_INFO = {
   groq: {
     name: 'Groq (High Speed)',
-    model: 'openai/gpt-oss-120b',
+    model: 'llama-3.3-70b-versatile',
     keyUrl: 'https://console.groq.com/keys',
     label: 'console.groq.com/keys',
     buttonText: 'Get Free Groq Key',
-    description: 'Ultra-fast inference (GPT-OSS 120B / Qwen 27B / Llama 3) with high free-tier rate limits.'
+    description: 'Ultra-fast inference (Llama 3.3 70B / Mixtral 8x7B) with high free-tier rate limits.'
   },
   gemini: {
     name: 'Google Gemini',
@@ -510,7 +510,7 @@ export default function App() {
     setIsExecuting(true);
     
     const devId = selectedDevice === 'pc' ? 'pc_windows_host' : 'phone_android_node';
-    const targetModel = PROVIDER_INFO[llmProvider]?.model || 'openai/gpt-oss-120b';
+    const targetModel = PROVIDER_INFO[llmProvider]?.model || 'llama-3.3-70b-versatile';
 
     try {
       const isLocal = isLocalServer();
@@ -1118,7 +1118,7 @@ export default function App() {
         <div style={{ background: '#121217', border: '1px solid #27272a', padding: '10px', borderRadius: '8px' }}>
           <div style={{ fontSize: '11px', color: '#71717a', marginBottom: '2px' }}>ACTIVE BRAIN</div>
           <div style={{ fontSize: '12px', fontWeight: '600', color: '#60a5fa' }}>{PROVIDER_INFO[llmProvider]?.name || 'Groq'}</div>
-          <div style={{ fontSize: '10px', color: '#a1a1aa', marginTop: '2px', fontFamily: 'monospace' }}>{PROVIDER_INFO[llmProvider]?.model || 'openai/gpt-oss-120b'}</div>
+          <div style={{ fontSize: '10px', color: '#a1a1aa', marginTop: '2px', fontFamily: 'monospace' }}>{PROVIDER_INFO[llmProvider]?.model || 'llama-3.3-70b-versatile'}</div>
           <button 
             onClick={() => setCurrentView('model_config')}
             style={{ background: 'transparent', border: 'none', color: '#3b82f6', fontSize: '11px', padding: 0, marginTop: '6px', cursor: 'pointer', textAlign: 'left' }}

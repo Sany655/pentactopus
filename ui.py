@@ -234,7 +234,8 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
             self._send_json({"signals": signals})
 
         elif path == "/api/webrtc/ice-servers":
-            self._send_json({"iceServers": SignalingHub.get_ice_servers()})
+            servers = SignalingHub.get_ice_servers()
+            self._send_json({"iceServers": servers, "ice_servers": servers})
 
         elif path.startswith("/download/"):
             fname = os.path.basename(path)
@@ -356,6 +357,17 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
                 return
             SignalingHub.push_signal(target_id, sender_id, signal_type, payload)
             self._send_json({"success": True})
+            return
+
+        elif path == "/api/push/notify":
+            from android.push_notifications import send_push
+            result = send_push(
+                device_token=data.get("device_token", ""),
+                title=data.get("title", "Pentactopus"),
+                body=data.get("body", ""),
+                data=data.get("data", {})
+            )
+            self._send_json(result)
             return
 
         elif path == "/api/admin/coupons/create":
