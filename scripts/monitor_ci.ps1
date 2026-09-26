@@ -39,8 +39,11 @@ while (-not $runId) {
         exit 1
     }
     try {
-        $res = Invoke-RestMethod -Uri "https://api.github.com/repos/Sany655/pentactopus/actions/runs?per_page=5" -Headers $headers
-        $targetRun = $res.workflow_runs | Where-Object { $_.head_branch -eq $Tag -or ($_.head_branch -eq "main" -and $_.name -like "*Native Client*") } | Select-Object -First 1
+        $res = Invoke-RestMethod -Uri "https://api.github.com/repos/Sany655/pentactopus/actions/runs?per_page=10" -Headers $headers
+        $targetRun = $res.workflow_runs | Where-Object { $_.head_branch -eq $Tag } | Select-Object -First 1
+        if (-not $targetRun -and ($Tag -eq "main" -or [string]::IsNullOrEmpty($Tag))) {
+            $targetRun = $res.workflow_runs | Where-Object { $_.name -like "*Native Client*" } | Select-Object -First 1
+        }
         if ($targetRun) {
             $runId = $targetRun.id
             Write-Host "Found workflow run ID: $runId ($($targetRun.name))"

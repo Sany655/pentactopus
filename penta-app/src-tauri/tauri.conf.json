@@ -41,11 +41,7 @@
       "nsis": {
         "displayLanguageSelector": false,
         "installMode": "currentUser",
-        "deleteAppDataOnUninstall": true
-      },
-      "wix": {
-        "bannerPath": null,
-        "dialogImagePath": null
+        "installerHooks": "hooks.nsh"
       }
     }
   }
