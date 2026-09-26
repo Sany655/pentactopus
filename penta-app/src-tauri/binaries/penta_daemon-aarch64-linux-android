@@ -1,0 +1,3 @@
+#!/bin/sh
+# Android stub for penta_daemon (Android uses native companion_relay.py, sidecar is desktop-only)
+exit 0

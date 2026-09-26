@@ -183,6 +183,17 @@ jobs:
         working-directory: ./penta-app
         run: npm run build
 
+      - name: Ensure Android Sidecar Stubs
+        working-directory: ./penta-app
+        run: |
+          mkdir -p src-tauri/binaries
+          for target in aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android; do
+            if [ ! -f "src-tauri/binaries/penta_daemon-$target" ]; then
+              printf '#!/bin/sh\nexit 0\n' > "src-tauri/binaries/penta_daemon-$target"
+            fi
+            chmod +x "src-tauri/binaries/penta_daemon-$target"
+          done
+
       - name: Build Android APK
         working-directory: ./penta-app
         env:
