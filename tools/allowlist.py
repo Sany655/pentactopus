@@ -52,3 +52,9 @@ def check_security_allowlist(action: ValidatedAction, enforce_strict_packages: b
     elif action.action_type == "type":
         # Check text
         sanitize_text_input(action.params["text"])
+
+    elif action.action_type == "run_command":
+        cmd = action.params.get("command", "")
+        for pattern in (r"rm\s+-rf", r"reboot", r"wipe", r"format", r"pm\s+clear\s+com.android"):
+            if re.search(pattern, cmd, re.IGNORECASE):
+                raise SecurityViolationError(f"Prohibited destructive command: '{cmd}'")

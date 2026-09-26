@@ -214,6 +214,15 @@ class ADBClient:
             time.sleep(p["seconds"])
             return {"status": "executed", "details": f"Waited {p['seconds']}s"}
 
+        elif t == "run_command":
+            cmd = p.get("command", "")
+            code, out, err = self.run_command(["shell"] + (cmd.split() if isinstance(cmd, str) and not any(c in cmd for c in "\"'") else [cmd]))
+            return {"status": "executed", "details": out or err or "Command executed."}
+
+        elif t == "unsupported":
+            msg = p.get("message", "Feature not supported on Android (Coming Soon).")
+            return {"status": "skipped", "details": msg}
+
         elif t == "finish":
             return {"status": "completed", "details": p["message"]}
 

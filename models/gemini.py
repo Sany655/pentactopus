@@ -68,8 +68,17 @@ class GeminiProvider(BaseModelProvider):
         is_pc = any(k in goal.lower() or k in screen_state_text.lower() for k in ["[pc", "windows", "desktop", "pc agent"])
         sys_prompt = PC_SYSTEM_PROMPT if is_pc else SYSTEM_PROMPT
 
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.model_name}:generateContent?key={self.api_key}"
-        prompt = f"Goal: {goal}\n\nCurrent UI State:\n{screen_state_text}\n\nWhat is the single next JSON action?"
+        history_context = ""
+        if history:
+            history_lines = []
+            for h in history[-8:]:
+                step_idx = h.get("step", "?")
+                act = h.get("action", {})
+                act_str = json.dumps(act) if isinstance(act, dict) else str(act)
+                history_lines.append(f"Step {step_idx}: {act_str}")
+            history_context = "\n\nActions Taken So Far:\n" + "\n".join(history_lines) + "\n(Review past outcomes to avoid repeating failed attempts. If the goal is achieved, output finish action.)"
+
+        prompt = f"Goal: {goal}\n\nCurrent UI State:\n{screen_state_text}{history_context}\n\nWhat is the single next JSON action?"
 
         parts = [{"text": prompt}]
         if screenshot_bytes:

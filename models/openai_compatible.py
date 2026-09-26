@@ -128,7 +128,17 @@ class OpenAICompatibleProvider(BaseModelProvider):
         if not self.api_key:
             raise ValueError(f"API key for '{self.flavor}' is missing. Set {ENV_KEY_MAP.get(self.flavor, 'API key')} in .env or Model Configuration")
 
-        prompt_text = f"Goal: {goal}\n\nCurrent UI State:\n{screen_state_text}\n\nWhat is the single next JSON action?"
+        history_context = ""
+        if history:
+            history_lines = []
+            for h in history[-8:]:
+                step_idx = h.get("step", "?")
+                act = h.get("action", {})
+                act_str = json.dumps(act) if isinstance(act, dict) else str(act)
+                history_lines.append(f"Step {step_idx}: {act_str}")
+            history_context = "\n\nActions Taken So Far:\n" + "\n".join(history_lines) + "\n(Review past outcomes to avoid repeating failed attempts. If the goal is achieved, output finish action.)"
+
+        prompt_text = f"Goal: {goal}\n\nCurrent UI State:\n{screen_state_text}{history_context}\n\nWhat is the single next JSON action?"
 
         if self.multimodal and screenshot_bytes:
             b64_img = base64.b64encode(screenshot_bytes).decode("utf-8")

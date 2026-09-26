@@ -683,9 +683,10 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
             os.environ[env_key_var] = active_key
             
         dry_run = data.get("dry_run", False)
+        max_steps = int(data.get("max_steps", 15))
         try:
             m = get_model_provider(provider, model_name=model_name, api_key=active_key, enable_fallback=not bool(active_key))
-            agent = PCAgent(model_provider=m, dry_run=dry_run)
+            agent = PCAgent(model_provider=m, max_steps=max_steps, dry_run=dry_run)
             res = agent.run_goal(goal)
             steps_log = []
             for s in res.get("steps", []):
@@ -719,28 +720,36 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
             os.environ[env_key_var] = active_key
             
         dry_run = data.get("dry_run", False)
+        max_steps = int(data.get("max_steps", 15))
         active_serial = self.get_target_serial()
         try:
             m = get_model_provider(provider, model_name=model_name, api_key=active_key, enable_fallback=not bool(active_key))
-            if active_serial:
+            is_pair_coding = any(k in goal for k in [
+                "[PLANNING & ARCHITECTURE TASK]",
+                "[PAIR PROGRAMMER CODE TASK]",
+                "[PAIR PROGRAMMER / CHAT ASSISTANT]"
+            ])
+            if active_serial or dry_run or is_pair_coding:
                 from agent.core import AndroidAgent
                 adb = ADBClient(device_serial=active_serial)
-                agent = AndroidAgent(model_provider=m, adb_client=adb, dry_run=dry_run)
+                agent = AndroidAgent(model_provider=m, adb_client=adb, max_steps=max_steps, dry_run=dry_run or not bool(active_serial))
                 res = agent.run_goal(goal)
-                self._send_json({
-                    "success": res.get("success", False),
-                    "platform": "android",
-                    "device": active_serial,
-                    "output": res.get("message", json.dumps(res)),
-                    "steps": res.get("steps", [])
-                })
+                final_msg = res.get("message") or res.get("error", "Task finished.")
+                res["message"] = final_msg
+                res["platform"] = "android"
+                res["device"] = active_serial or "offline_node"
+                res["output"] = final_msg
+                self._send_json(res)
             else:
                 self._send_json({
                     "success": False,
-                    "error": "No Android device connected via USB or Wi-Fi. Please connect your phone or switch agent target to PC."
+                    "platform": "android",
+                    "error": "No Android device connected via USB or Wi-Fi. Please connect your phone or switch agent target to PC.",
+                    "message": "⚠️ **No Android Device Connected**\n\nPlease connect your phone via USB with USB Debugging enabled, or switch the Target Device toggle to **Windows**.",
+                    "steps": []
                 })
         except Exception as e:
-            self._send_json({"success": False, "error": str(e), "output": str(e)})
+            self._send_json({"success": False, "error": str(e), "output": str(e), "message": f"Error: {e}"})
 
     def handle_mobile_click(self, data):
         active_serial = self.get_target_serial()

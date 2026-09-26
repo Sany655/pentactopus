@@ -177,14 +177,53 @@ class DesktopController:
         time.sleep(0.02)
         self.user32.keybd_event(vk_code, 0, KEYEVENTF_KEYUP, 0)
 
+    def send_combo(self, *vk_codes: int):
+        for vk in vk_codes:
+            self.user32.keybd_event(vk, 0, 0, 0)
+        time.sleep(0.03)
+        for vk in reversed(vk_codes):
+            self.user32.keybd_event(vk, 0, KEYEVENTF_KEYUP, 0)
+
     def send_hotkey(self, hotkey_name: str) -> bool:
-        name = hotkey_name.lower().replace("-", "_")
+        name = hotkey_name.lower().replace("-", "_").strip()
         if name in ("win_d", "desktop"):
-            self.user32.keybd_event(VK_LWIN, 0, 0, 0)
-            self.user32.keybd_event(ord('D'), 0, 0, 0)
-            time.sleep(0.03)
-            self.user32.keybd_event(ord('D'), 0, KEYEVENTF_KEYUP, 0)
-            self.user32.keybd_event(VK_LWIN, 0, KEYEVENTF_KEYUP, 0)
+            self.send_combo(VK_LWIN, ord('D'))
+            return True
+        elif name in ("win_r", "run"):
+            self.send_combo(VK_LWIN, ord('R'))
+            return True
+        elif name in ("win_e", "explorer"):
+            self.send_combo(VK_LWIN, ord('E'))
+            return True
+        elif name in ("win_s", "search"):
+            self.send_combo(VK_LWIN, ord('S'))
+            return True
+        elif name in ("alt_tab",):
+            self.send_combo(VK_MENU, VK_TAB)
+            return True
+        elif name in ("alt_f4",):
+            self.send_combo(VK_MENU, 0x73)  # VK_F4 = 0x73
+            return True
+        elif name in ("ctrl_c", "copy"):
+            self.send_combo(VK_CONTROL, ord('C'))
+            return True
+        elif name in ("ctrl_v", "paste"):
+            self.send_combo(VK_CONTROL, ord('V'))
+            return True
+        elif name in ("ctrl_x", "cut"):
+            self.send_combo(VK_CONTROL, ord('X'))
+            return True
+        elif name in ("ctrl_s", "save"):
+            self.send_combo(VK_CONTROL, ord('S'))
+            return True
+        elif name in ("ctrl_a", "select_all"):
+            self.send_combo(VK_CONTROL, ord('A'))
+            return True
+        elif name in ("ctrl_z", "undo"):
+            self.send_combo(VK_CONTROL, ord('Z'))
+            return True
+        elif name in ("ctrl_shift_esc", "taskmgr", "taskmanager"):
+            self.send_combo(VK_CONTROL, VK_SHIFT, VK_ESCAPE)
             return True
         elif name in ("enter", "return"):
             self.send_key(VK_RETURN)
@@ -236,26 +275,90 @@ class DesktopController:
             url = f"https://{url}"
         webbrowser.open(url)
 
+    def find_application_path(self, app_name: str) -> Optional[str]:
+        """Search system PATH, user AppData, and Program Files for executable."""
+        clean_name = app_name.strip().strip('"\'')
+        if os.path.isfile(clean_name):
+            return clean_name
+
+        # 1. Check where.exe in system PATH
+        try:
+            res = subprocess.run(["where.exe", clean_name], capture_output=True, text=True, timeout=2)
+            if res.returncode == 0 and res.stdout.strip():
+                return res.stdout.strip().splitlines()[0]
+        except Exception:
+            pass
+
+        # 2. Check User AppData Programs (e.g. Antigravity IDE, VS Code, Slack, etc.)
+        local_app_data = os.environ.get("LOCALAPPDATA", "")
+        if local_app_data:
+            programs_dir = os.path.join(local_app_data, "Programs")
+            if os.path.isdir(programs_dir):
+                for root, _, files in os.walk(programs_dir):
+                    for f in files:
+                        if f.lower().endswith(".exe") and clean_name.lower() in f.lower():
+                            return os.path.join(root, f)
+
+        # 3. Check Program Files
+        for pf_env in ("ProgramFiles", "ProgramFiles(x86)"):
+            pf_dir = os.environ.get(pf_env, "")
+            if pf_dir and os.path.isdir(pf_dir):
+                try:
+                    for entry in os.scandir(pf_dir):
+                        if entry.is_dir() and clean_name.lower() in entry.name.lower():
+                            for subroot, _, files in os.walk(entry.path):
+                                for f in files:
+                                    if f.lower().endswith(".exe") and clean_name.lower() in f.lower():
+                                        return os.path.join(subroot, f)
+                except Exception:
+                    pass
+
+        return None
+
     def launch_app(self, app_name: str) -> Dict[str, Any]:
         app_map = {
             "chrome": ["start", "chrome"],
             "browser": ["start", "chrome"],
             "edge": ["start", "msedge"],
+            "msedge": ["start", "msedge"],
             "notepad": ["notepad.exe"],
             "calc": ["calc.exe"],
             "calculator": ["calc.exe"],
             "explorer": ["explorer.exe"],
             "terminal": ["start", "powershell"],
-            "cmd": ["start", "cmd"]
+            "powershell": ["start", "powershell"],
+            "cmd": ["start", "cmd"],
+            "code": ["code"],
+            "vscode": ["code"],
+            "git": ["git", "--version"],
+            "taskmgr": ["taskmgr.exe"],
+            "taskmanager": ["taskmgr.exe"]
         }
-        cmd = app_map.get(app_name.lower())
-        if not cmd:
-            return {"success": False, "error": f"App '{app_name}' not in safe launch allowlist."}
+        low = app_name.lower().strip()
+        cmd = app_map.get(low)
+
+        if cmd:
+            try:
+                subprocess.Popen(cmd, shell=True)
+                return {"success": True, "message": f"Launched {app_name} on PC."}
+            except Exception as e:
+                return {"success": False, "error": str(e)}
+
+        # Search executable path dynamically
+        exe_path = self.find_application_path(app_name)
+        if exe_path:
+            try:
+                subprocess.Popen([exe_path], shell=True)
+                return {"success": True, "message": f"Launched '{os.path.basename(exe_path)}' ({exe_path}) on PC."}
+            except Exception as e:
+                return {"success": False, "error": str(e)}
+
+        # Safe fallback: attempt Windows start command
         try:
-            subprocess.Popen(cmd, shell=True)
-            return {"success": True, "message": f"Launched {app_name} on PC."}
+            subprocess.Popen(f'start "" "{app_name}"', shell=True)
+            return {"success": True, "message": f"Dispatched launch for '{app_name}' via Windows shell."}
         except Exception as e:
-            return {"success": False, "error": str(e)}
+            return {"success": False, "error": f"Could not launch '{app_name}': {e}"}
 
     def scale_coordinates(self, norm_x: float, norm_y: float) -> Tuple[int, int]:
         """Convert 0.0-1.0 normalized mobile touch coordinates to native PC pixels."""

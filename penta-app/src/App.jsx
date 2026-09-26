@@ -531,7 +531,8 @@ export default function App() {
           provider: llmProvider, 
           model: targetModel,
           model_name: targetModel,
-          api_key: apiKey 
+          api_key: apiKey,
+          max_steps: 15
         })
       });
       const data = await res.json();
