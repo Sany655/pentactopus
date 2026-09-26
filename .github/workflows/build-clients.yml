@@ -4,13 +4,72 @@ on:
   push:
     tags:
       - 'v*'
+    branches:
+      - main
   workflow_dispatch:
+    inputs:
+      force_release:
+        description: 'Force release regardless of commit message'
+        type: boolean
+        default: true
+      version_override:
+        description: 'Override release version (leave blank to read from tauri.conf.json)'
+        required: false
+        default: ''
 
 permissions:
   contents: write
 
 jobs:
+  evaluate-trigger:
+    runs-on: ubuntu-latest
+    outputs:
+      should_build: ${{ steps.check.outputs.should_build }}
+      version: ${{ steps.check.outputs.version }}
+      tag_name: ${{ steps.check.outputs.tag_name }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Evaluate Release Trigger
+        id: check
+        shell: bash
+        run: |
+          IS_TAG="${{ startsWith(github.ref, 'refs/tags/v') }}"
+          IS_DISPATCH="${{ github.event_name == 'workflow_dispatch' }}"
+          COMMIT_MSG="${{ github.event.head_commit.message }}"
+          
+          # Extract version from tauri.conf.json
+          JSON_VERSION=$(node -e "try { console.log(require('./penta-app/src-tauri/tauri.conf.json').version); } catch(e){ console.log('2.7.1'); }")
+          INPUT_VERSION="${{ inputs.version_override }}"
+          
+          if [ -n "$INPUT_VERSION" ]; then
+            VERSION="$INPUT_VERSION"
+          elif [ "$IS_TAG" = "true" ]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+          else
+            VERSION="$JSON_VERSION"
+          fi
+          
+          TAG_NAME="v$VERSION"
+          
+          SHOULD_BUILD="false"
+          if [ "$IS_TAG" = "true" ] || [ "$IS_DISPATCH" = "true" ]; then
+            SHOULD_BUILD="true"
+          elif echo "$COMMIT_MSG" | grep -Ei '\[release\]|\[auto-release\]|^release(\(.*\))?:' > /dev/null; then
+            SHOULD_BUILD="true"
+          fi
+          
+          echo "Decision: should_build=$SHOULD_BUILD, version=$VERSION, tag_name=$TAG_NAME"
+          echo "should_build=$SHOULD_BUILD" >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
+
   build-windows:
+    needs: evaluate-trigger
+    if: needs.evaluate-trigger.outputs.should_build == 'true'
     runs-on: windows-latest
     outputs:
       exe_path: ${{ steps.find_exe.outputs.exe_path }}
@@ -67,6 +126,8 @@ jobs:
           retention-days: 7
 
   build-android:
+    needs: evaluate-trigger
+    if: needs.evaluate-trigger.outputs.should_build == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -100,42 +161,39 @@ jobs:
             "ndk;25.2.9519653" \
             "platforms;android-33" \
             "build-tools;33.0.2"
-          echo "ANDROID_NDK_HOME=$ANDROID_SDK_ROOT/ndk/25.2.9519653" >> $GITHUB_ENV
-          echo "NDK_HOME=$ANDROID_SDK_ROOT/ndk/25.2.9519653" >> $GITHUB_ENV
 
-      - name: Install npm dependencies
+      - name: Set Android Environment Variables
+        run: |
+          echo "NDK_HOME=$ANDROID_SDK_ROOT/ndk/25.2.9519653" >> $GITHUB_ENV
+          echo "ANDROID_NDK_HOME=$ANDROID_SDK_ROOT/ndk/25.2.9519653" >> $GITHUB_ENV
+
+      - name: Install frontend dependencies
         working-directory: ./penta-app
         run: npm ci
+
+      - name: Initialize Tauri Android project if needed
+        working-directory: ./penta-app
+        run: |
+          if [ ! -d "src-tauri/gen/android" ]; then
+            echo "Initializing Tauri Android target..."
+            cargo tauri android init
+          fi
 
       - name: Build frontend
         working-directory: ./penta-app
         run: npm run build
 
-      - name: Inject dummy sidecar stubs
+      - name: Build Android APK
         working-directory: ./penta-app
+        env:
+          NDK_HOME: ${{ env.NDK_HOME }}
         run: |
-          mkdir -p src-tauri/binaries
-          for ARCH in aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android; do
-            touch "src-tauri/binaries/penta_daemon-$ARCH"
-            chmod +x "src-tauri/binaries/penta_daemon-$ARCH"
-          done
+          cargo tauri android build --apk
 
-      - name: Initialize Tauri Android project
-        working-directory: ./penta-app
-        run: cargo tauri android init --ci
-        env:
-          ANDROID_NDK_HOME: ${{ env.ANDROID_NDK_HOME }}
-
-      - name: Build Android APK (debug, unsigned)
-        working-directory: ./penta-app
-        run: cargo tauri android build --apk --debug
-        env:
-          ANDROID_NDK_HOME: ${{ env.ANDROID_NDK_HOME }}
-
-      - name: Locate and copy APK
+      - name: Find generated APK
         id: find_apk
         run: |
-          APK=$(find penta-app/src-tauri/gen/android -name "*.apk" | head -1)
+          APK=$(find penta-app/src-tauri/gen/android -name "*.apk" | head -n 1)
           if [ -z "$APK" ]; then
             echo "ERROR: No APK produced by Tauri build!" && exit 1
           fi
@@ -151,9 +209,13 @@ jobs:
           retention-days: 30
 
   release:
-    needs: [build-windows, build-android]
+    needs: [evaluate-trigger, build-windows, build-android]
+    if: needs.evaluate-trigger.outputs.should_build == 'true'
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Download Windows installer
         uses: actions/download-artifact@v4
         with:
@@ -169,13 +231,23 @@ jobs:
       - name: List release assets
         run: ls -la ./release-assets/
 
+      - name: Create or update Git Tag
+        env:
+          TAG_NAME: ${{ needs.evaluate-trigger.outputs.tag_name }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -f "$TAG_NAME"
+          git push origin "$TAG_NAME" -f || echo "Tag update skipped"
+
       - name: Create GitHub Release and upload binaries
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.ref_name == 'main' && 'latest' || github.ref_name }}
-          name: "Pentactopus ${{ github.ref_name == 'main' && 'Latest' || github.ref_name }}"
+          tag_name: ${{ needs.evaluate-trigger.outputs.tag_name }}
+          name: "Pentactopus ${{ needs.evaluate-trigger.outputs.tag_name }}"
           body: |
-            ## Pentactopus ${{ github.ref_name }}
+            ## Pentactopus ${{ needs.evaluate-trigger.outputs.tag_name }}
 
             ### Downloads
             - **Windows**: `PentaAssistant-Setup.exe` — Windows 10/11 x64 installer
@@ -184,6 +256,8 @@ jobs:
             ### What's New
             - Autonomous AI computer-use agent (vision + action loop)
             - Cross-platform P2P remote desktop mesh
+            - Clean zero-residue install/uninstall architecture
+            - Persistent server connection & login enhancements
             - License key activation & Pro tier
             - Improved performance and stability
           draft: false
@@ -197,6 +271,7 @@ jobs:
       - name: Push binaries to public releases repo
         env:
           RELEASE_REPO_PAT: ${{ secrets.RELEASE_REPO_PAT }}
+          TAG_NAME: ${{ needs.evaluate-trigger.outputs.tag_name }}
         run: |
           # Only run if the token is provided
           if [ -z "$RELEASE_REPO_PAT" ]; then
@@ -215,11 +290,13 @@ jobs:
           cd public-repo
           git rm -q *.exe *.apk || true
           
-          # Copy and rename the compiled binaries into the repository with versioning
-          cp ../release-assets/PentaAssistant-Setup.exe PentaAssistant-Setup-${{ github.ref_name == 'main' && 'latest' || github.ref_name }}.exe
-          cp ../release-assets/PentaAssistant.apk PentaAssistant-${{ github.ref_name == 'main' && 'latest' || github.ref_name }}.apk
+          # Copy binaries with version tag and latest aliases
+          cp ../release-assets/PentaAssistant-Setup.exe "PentaAssistant-Setup-${TAG_NAME}.exe"
+          cp ../release-assets/PentaAssistant-Setup.exe "PentaAssistant-Setup.exe"
+          cp ../release-assets/PentaAssistant.apk "PentaAssistant-${TAG_NAME}.apk"
+          cp ../release-assets/PentaAssistant.apk "PentaAssistant.apk"
           
           # Commit and push
           git add .
-          git commit -m "chore: automated versioned binary release for ${{ github.ref_name }}" || echo "No changes to commit"
+          git commit -m "chore: automated binary release for ${TAG_NAME}" || echo "No changes to commit"
           git push origin main
