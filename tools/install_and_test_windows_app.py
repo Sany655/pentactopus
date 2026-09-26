@@ -56,6 +56,16 @@ def install_app():
         shutil.copy2(SOURCE_ICON, INSTALLED_ICON)
         print(f"--> App Icon Deployed: {INSTALLED_ICON}")
 
+    # 2b. Deploy uninstaller script
+    uninstaller_path = os.path.join(INSTALL_DIR, "uninstall.cmd")
+    with open(uninstaller_path, "w", encoding="utf-8") as f:
+        f.write('@echo off\r\n'
+                'echo Uninstalling Pentactopus Assistant...\r\n'
+                'powershell.exe -ExecutionPolicy Bypass -NoProfile -Command "Stop-Process -Name PentaAssistant,penta_daemon -Force -ErrorAction SilentlyContinue; Remove-Item -LiteralPath \'$env:APPDATA\\Microsoft\\Windows\\Start Menu\\Programs\\Pentactopus Assistant.lnk\', \'$env:USERPROFILE\\Desktop\\Pentactopus Assistant.lnk\' -Force -ErrorAction SilentlyContinue; Remove-Item -LiteralPath \'$env:LOCALAPPDATA\\PentaAssistant\', \'$env:LOCALAPPDATA\\com.penta.assistant\', \'$env:APPDATA\\com.penta.assistant\', \'$env:LOCALAPPDATA\\Pentactopus\' -Recurse -Force -ErrorAction SilentlyContinue; Remove-Item -LiteralPath \'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Pentactopus\' -Recurse -Force -ErrorAction SilentlyContinue"\r\n'
+                'start /b "" cmd /c "timeout /t 1 /nobreak >nul & rmdir /s /q \\"%~dp0\\""\r\n'
+                'exit\r\n')
+    print(f"--> Uninstaller Deployed: {uninstaller_path}")
+
     # 3. Create Windows Shortcuts
     create_shortcut(INSTALLED_EXE, START_MENU_LNK, "Pentactopus Assistant", INSTALLED_ICON)
     create_shortcut(INSTALLED_EXE, DESKTOP_LNK, "Pentactopus Assistant", INSTALLED_ICON)
@@ -82,14 +92,23 @@ def create_shortcut(target, lnk_path, desc, icon_path):
 
 def register_in_registry():
     reg_path = r"Software\Microsoft\Windows\CurrentVersion\Uninstall\Pentactopus"
+    # Self-contained PowerShell uninstaller that cleans processes, shortcuts, appdata, registry, and install folder
+    uninstall_cmd = (
+        'powershell.exe -ExecutionPolicy Bypass -NoProfile -Command "'
+        'Stop-Process -Name PentaAssistant,penta_daemon -Force -ErrorAction SilentlyContinue; '
+        'Remove-Item -LiteralPath \'$env:APPDATA\\Microsoft\\Windows\\Start Menu\\Programs\\Pentactopus Assistant.lnk\', \'$env:USERPROFILE\\Desktop\\Pentactopus Assistant.lnk\' -Force -ErrorAction SilentlyContinue; '
+        'Remove-Item -LiteralPath \'$env:LOCALAPPDATA\\PentaAssistant\', \'$env:LOCALAPPDATA\\com.penta.assistant\', \'$env:APPDATA\\com.penta.assistant\', \'$env:LOCALAPPDATA\\Pentactopus\' -Recurse -Force -ErrorAction SilentlyContinue; '
+        'Remove-Item -LiteralPath \'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Pentactopus\' -Recurse -Force -ErrorAction SilentlyContinue; '
+        'Remove-Item -LiteralPath \'' + INSTALL_DIR + '\' -Recurse -Force -ErrorAction SilentlyContinue"'
+    )
     try:
         with winreg.CreateKey(winreg.HKEY_CURRENT_USER, reg_path) as key:
             winreg.SetValueEx(key, "DisplayName", 0, winreg.REG_SZ, "Pentactopus Assistant")
-            winreg.SetValueEx(key, "DisplayVersion", 0, winreg.REG_SZ, "2.5.0")
+            winreg.SetValueEx(key, "DisplayVersion", 0, winreg.REG_SZ, "2.7.0")
             winreg.SetValueEx(key, "Publisher", 0, winreg.REG_SZ, "Pentactopus Autonomous Systems")
             winreg.SetValueEx(key, "InstallLocation", 0, winreg.REG_SZ, INSTALL_DIR)
             winreg.SetValueEx(key, "DisplayIcon", 0, winreg.REG_SZ, f"{INSTALLED_EXE},0")
-            winreg.SetValueEx(key, "UninstallString", 0, winreg.REG_SZ, f'powershell -Command "Remove-Item -Recurse -Force \'{INSTALL_DIR}\'"')
+            winreg.SetValueEx(key, "UninstallString", 0, winreg.REG_SZ, uninstall_cmd)
     except Exception as e:
         print(f"    Registry Warning: {e}")
 
