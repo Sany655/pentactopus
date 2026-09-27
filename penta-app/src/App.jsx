@@ -177,7 +177,40 @@ const SUGGESTIONS = [
 
 export default function App() {
   const [currentView, setCurrentView] = useState('login');
-  const [serverUrl, setServerUrl] = useState(localStorage.getItem('penta_server_url') || 'http://localhost:5050');
+  const [serverUrl, setServerUrl] = useState(() => {
+    const saved = localStorage.getItem('penta_server_url');
+    if (!saved || saved === 'http://localhost:5050') {
+      return 'http://127.0.0.1:5050';
+    }
+    return saved;
+  });
+
+  const safeFetch = async (url, options = {}) => {
+    try {
+      return await fetch(url, options);
+    } catch (err) {
+      if (typeof url === 'string') {
+        if (url.includes('localhost:5050')) {
+          const alt = url.replace('localhost:5050', '127.0.0.1:5050');
+          try {
+            const res = await fetch(alt, options);
+            setServerUrl('http://127.0.0.1:5050');
+            localStorage.setItem('penta_server_url', 'http://127.0.0.1:5050');
+            return res;
+          } catch (_) {}
+        } else if (url.includes('127.0.0.1:5050')) {
+          const alt = url.replace('127.0.0.1:5050', 'localhost:5050');
+          try {
+            const res = await fetch(alt, options);
+            setServerUrl('http://localhost:5050');
+            localStorage.setItem('penta_server_url', 'http://localhost:5050');
+            return res;
+          } catch (_) {}
+        }
+      }
+      throw err;
+    }
+  };
   
   // Auth state
   const [email, setEmail] = useState('');
@@ -376,7 +409,7 @@ export default function App() {
     setMenuOpen(false);
   };
 
-  const isLocalServer = () => serverUrl.includes('localhost') || serverUrl.includes('127.0.0.1');
+  const isLocalServer = () => serverUrl.includes('localhost') || serverUrl.includes('127.0.0.1') || serverUrl.includes('::1') || serverUrl.startsWith('/');
 
   const handleNewChat = () => {
     setChatHistory([{ 
@@ -521,7 +554,7 @@ export default function App() {
         ? `${serverUrl}/api/${selectedDevice === 'pc' ? 'pc' : 'mobile'}/agent`
         : `${serverUrl}/api/device/${devId}/action`;
 
-      const res = await fetch(endpoint, {
+      const res = await safeFetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -575,7 +608,7 @@ export default function App() {
       setChatHistory(prev => [...prev, { 
         id: Date.now() + 1,
         sender: 'agent', 
-        text: `Error: Failed to reach agent service (${err.message || 'Connection error'})`,
+        text: `Error: Failed to reach agent service (${err.message || 'Connection error'}). Check that the local server is reachable at ${serverUrl}.`,
         isError: true,
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       }]);
@@ -851,11 +884,20 @@ export default function App() {
       if (Math.abs(dx) > 30 || Math.abs(dy) > 30) {
         // Swipe gesture detected
         try {
-          await fetch(`${serverUrl}/api/device/${devId}/action`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
-            body: JSON.stringify({ type: 'swipe', dx, dy })
-          });
+          const isLocal = isLocalServer();
+          if (isLocal && selectedDevice === 'pc') {
+            await safeFetch(`${serverUrl}/api/pc/action`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
+              body: JSON.stringify({ action: 'scroll', direction: dy < 0 ? 'down' : 'up', clicks: Math.max(1, Math.round(Math.abs(dy) / 20)) })
+            });
+          } else {
+            await safeFetch(`${serverUrl}/api/device/${devId}/action`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
+              body: JSON.stringify({ type: 'swipe', dx, dy })
+            });
+          }
         } catch (err) {}
         setTouchStartPos(null);
         pinchStartDist.current = null;
@@ -871,7 +913,7 @@ export default function App() {
         ? `${serverUrl}/api/${selectedDevice === 'pc' ? 'pc' : 'mobile'}/click`
         : `${serverUrl}/api/device/${devId}/action`;
 
-      await fetch(endpoint, {
+      await safeFetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
         body: JSON.stringify({
@@ -883,6 +925,27 @@ export default function App() {
       });
     } catch (err) {
       console.warn("Touch failed", err);
+    }
+  };
+
+  const sendQuickHotkey = async (key) => {
+    try {
+      const isLocal = isLocalServer();
+      if (isLocal && selectedDevice === 'pc') {
+        await safeFetch(`${serverUrl}/api/pc/action`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
+          body: JSON.stringify({ action: key })
+        });
+      } else {
+        await safeFetch(`${serverUrl}/api/device/${targetCode || 'pc_windows_host'}/action`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
+          body: JSON.stringify({ action: key, type: 'hotkey' })
+        });
+      }
+    } catch (err) {
+      console.warn('Hotkey dispatch failed:', err);
     }
   };
 
@@ -1883,8 +1946,11 @@ export default function App() {
           {/* Hotkey Shortcuts */}
           {controlPermission !== 'view_only' && (
             <div style={{ display: 'flex', gap: '4px' }}>
-              <button style={{ padding: '6px 8px', background: '#18181b', border: '1px solid #27272a', color: '#a1a1aa', borderRadius: '6px', cursor: 'pointer', fontSize: '11px' }}>Win+D</button>
-              <button style={{ padding: '6px 8px', background: '#18181b', border: '1px solid #27272a', color: '#a1a1aa', borderRadius: '6px', cursor: 'pointer', fontSize: '11px' }}>Esc</button>
+              <button onClick={() => sendQuickHotkey('win_d')} title="Toggle Desktop" style={{ padding: '6px 8px', background: '#18181b', border: '1px solid #27272a', color: '#a1a1aa', borderRadius: '6px', cursor: 'pointer', fontSize: '11px' }}>Win+D</button>
+              <button onClick={() => sendQuickHotkey('win_r')} title="Open Run Dialog" style={{ padding: '6px 8px', background: '#18181b', border: '1px solid #27272a', color: '#a1a1aa', borderRadius: '6px', cursor: 'pointer', fontSize: '11px' }}>Win+R</button>
+              <button onClick={() => sendQuickHotkey('alt_tab')} title="Switch App" style={{ padding: '6px 8px', background: '#18181b', border: '1px solid #27272a', color: '#a1a1aa', borderRadius: '6px', cursor: 'pointer', fontSize: '11px' }}>Alt+Tab</button>
+              <button onClick={() => sendQuickHotkey('esc')} title="Escape" style={{ padding: '6px 8px', background: '#18181b', border: '1px solid #27272a', color: '#a1a1aa', borderRadius: '6px', cursor: 'pointer', fontSize: '11px' }}>Esc</button>
+              <button onClick={() => sendQuickHotkey('enter')} title="Enter" style={{ padding: '6px 8px', background: '#18181b', border: '1px solid #27272a', color: '#a1a1aa', borderRadius: '6px', cursor: 'pointer', fontSize: '11px' }}>Enter</button>
             </div>
           )}
         </div>

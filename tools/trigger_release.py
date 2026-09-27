@@ -18,7 +18,7 @@ TAURI_CONF = os.path.join(BASE_DIR, "penta-app", "src-tauri", "tauri.conf.json")
 def get_current_version():
     with open(TAURI_CONF, "r", encoding="utf-8") as f:
         data = json.load(f)
-    return data.get("version", "2.7.2")
+    return data.get("version", "2.7.3")
 
 def get_github_token():
     try:

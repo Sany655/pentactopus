@@ -11,7 +11,7 @@
 | Field | Value |
 |---|---|
 | **Project Name** | Pentactopus |
-| **Version** | 2.5.0 |
+| **Version** | 2.7.3 |
 | **Repo** | [github.com/Sany655/pentactopus](https://github.com/Sany655/pentactopus) |
 | **Production URL** | [pentactopus.vercel.app](https://pentactopus.vercel.app) |
 | **Platforms** | Web (Vercel) • Windows (Tauri v2) • Android (Tauri v2) |

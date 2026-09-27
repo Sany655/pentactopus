@@ -6,7 +6,7 @@ Write-Host "Building Penta Daemon Python sidecar for Tauri..."
 Write-Host "Target Architecture: $Target"
 
 # Install all required packages before bundling
-python -m pip install pyinstaller pillow websockets pyautogui pynput
+python -m pip install -r requirements.txt pyinstaller pillow websockets pyautogui pynput
 
 # Build the daemon as a single executable
 # We use --noconsole to hide the terminal window when it runs in the background
@@ -23,7 +23,11 @@ python -m PyInstaller --onefile --noconsole --name penta_daemon `
     --hidden-import websockets.legacy.server `
     --hidden-import websockets.legacy.client `
     --hidden-import asyncio `
+    --hidden-import requests `
+    --hidden-import urllib3 `
+    --hidden-import sqlite3 `
     --collect-all PIL `
+    --collect-all requests `
     run_sidecar.py
 
 if (-not (Test-Path "dist\penta_daemon.exe")) {

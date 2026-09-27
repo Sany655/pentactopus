@@ -58,6 +58,11 @@ class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
     daemon_threads = True
     allow_reuse_address = True
 
+class ThreadedTCPServer6(socketserver.ThreadingMixIn, socketserver.TCPServer):
+    daemon_threads = True
+    allow_reuse_address = True
+    address_family = getattr(socketserver.TCPServer, "address_family", 2) if not hasattr(sys.modules.get("socket"), "AF_INET6") else sys.modules.get("socket").AF_INET6
+
 class DashboardHandler(http.server.SimpleHTTPRequestHandler):
     ACTIVE_SERIAL = None
 
@@ -77,8 +82,10 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
     def do_OPTIONS(self):
         self.send_response(200)
         self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-        self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With, Accept, Origin, Access-Control-Request-Private-Network, *")
+        self.send_header("Access-Control-Allow-Private-Network", "true")
+        self.send_header("Access-Control-Max-Age", "86400")
         self.end_headers()
 
     def do_GET(self):
@@ -497,6 +504,9 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
         self.send_response(code)
         self.send_header("Content-type", "application/json; charset=utf-8")
         self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Private-Network", "true")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "*")
         self.end_headers()
         self.wfile.write(json.dumps(data).encode("utf-8"))
 
@@ -610,6 +620,8 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
             jpeg_bytes = controller.capture_screen_jpeg(quality=70, max_width=1024)
             self.send_response(200)
             self.send_header("Content-type", "image/jpeg")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.send_header("Access-Control-Allow-Private-Network", "true")
             self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
             self.end_headers()
             self.wfile.write(jpeg_bytes)
@@ -638,9 +650,6 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
             if act == "lock":
                 controller.lock_pc()
                 self._send_json({"success": True, "message": "Windows PC Locked."})
-            elif act in ("win_d", "vol_up", "vol_down", "mute", "play_pause", "enter", "esc", "space", "tab"):
-                ok = controller.send_hotkey(act)
-                self._send_json({"success": ok, "message": f"Triggered {act} on PC."})
             elif act == "launch_app":
                 app = data.get("app", "notepad")
                 res = controller.launch_app(app)
@@ -649,8 +658,15 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
                 url = data.get("url", "")
                 controller.open_url(url)
                 self._send_json({"success": True, "message": f"Opened {url} on PC."})
+            elif act == "scroll":
+                direction = data.get("direction", "down")
+                clicks = int(data.get("clicks", 3))
+                ok = controller.scroll(direction=direction, clicks=clicks)
+                self._send_json({"success": ok, "message": f"Scrolled {direction} by {clicks}."})
+            elif controller.send_hotkey(act):
+                self._send_json({"success": True, "message": f"Triggered {act} on PC."})
             else:
-                self._send_json({"success": False, "error": f"Unknown action '{act}'"})
+                self._send_json({"success": False, "error": f"Unknown or unsupported action '{act}'"})
         except Exception as e:
             self._send_json({"success": False, "error": str(e)})
 
@@ -683,6 +699,15 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
             os.environ[env_key_var] = active_key
             
         dry_run = data.get("dry_run", False)
+        if not active_key and provider not in ("ollama", "mock") and not dry_run:
+            prov_label = provider.capitalize()
+            self._send_json({
+                "success": False,
+                "error": f"API key required for {prov_label}. Please click 'Switch Model / Key' in the left sidebar to enter your {prov_label} API Key.",
+                "message": f"API key required for {prov_label}."
+            })
+            return
+
         max_steps = int(data.get("max_steps", 15))
         try:
             m = get_model_provider(provider, model_name=model_name, api_key=active_key, enable_fallback=not bool(active_key))
@@ -720,6 +745,15 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
             os.environ[env_key_var] = active_key
             
         dry_run = data.get("dry_run", False)
+        if not active_key and provider not in ("ollama", "mock") and not dry_run:
+            prov_label = provider.capitalize()
+            self._send_json({
+                "success": False,
+                "error": f"API key required for {prov_label}. Please click 'Switch Model / Key' in the left sidebar to enter your {prov_label} API Key.",
+                "message": f"API key required for {prov_label}."
+            })
+            return
+
         max_steps = int(data.get("max_steps", 15))
         active_serial = self.get_target_serial()
         try:
@@ -838,6 +872,8 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
               '''</svg>'''
         self.send_response(200)
         self.send_header("Content-type", "image/svg+xml")
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Private-Network", "true")
         self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
         self.end_headers()
         self.wfile.write(svg.encode("utf-8"))
@@ -1058,11 +1094,28 @@ except ImportError:
     webview = None
 
 def run_server():
-    with ThreadedTCPServer(("", PORT), DashboardHandler) as httpd:
+    def serve_v4():
         try:
-            httpd.serve_forever()
+            with ThreadedTCPServer(("0.0.0.0", PORT), DashboardHandler) as httpd:
+                httpd.serve_forever()
+        except Exception as e:
+            print(f"[SERVER V4 ERR] {e}")
+
+    def serve_v6():
+        try:
+            with ThreadedTCPServer6(("::1", PORT), DashboardHandler) as httpd:
+                httpd.serve_forever()
         except Exception:
             pass
+
+    t4 = threading.Thread(target=serve_v4, daemon=True)
+    t4.start()
+
+    if getattr(sys.modules.get("socket"), "has_ipv6", False):
+        t6 = threading.Thread(target=serve_v6, daemon=True)
+        t6.start()
+
+    t4.join()
 
 def main():
     print("="*65)
