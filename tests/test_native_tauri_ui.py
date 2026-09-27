@@ -26,6 +26,10 @@ def test_native_windows_app():
 
     print(f"Testing native Windows app at: {exe_path}")
 
+    # Terminate any running instance so the debugging port can be bound
+    subprocess.run(["powershell", "-Command", "Stop-Process -Name penta-assistant, penta_daemon -Force -ErrorAction SilentlyContinue"], capture_output=True)
+    time.sleep(1)
+
     # Launch native Windows app with WebView2 remote debugging enabled
     env = os.environ.copy()
     env["WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS"] = "--remote-debugging-port=9222"
@@ -38,7 +42,7 @@ def test_native_windows_app():
     with sync_playwright() as p:
         try:
             # Connect Playwright to the native WebView2 container via CDP
-            browser = p.chromium.connect_over_cdp("http://localhost:9222")
+            browser = p.chromium.connect_over_cdp("http://127.0.0.1:9222")
             
             # The Tauri app has a single context and a single page
             context = browser.contexts[0]

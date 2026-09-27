@@ -168,9 +168,10 @@ class DesktopController:
         time.sleep(0.08)
         self.click(x, y, button="left")
 
-    def scroll(self, clicks: int = 3):
-        # 120 units per notch
-        self.user32.mouse_event(MOUSEEVENTF_WHEEL, 0, 0, clicks * 120, 0)
+    def scroll(self, clicks: int = 3, direction: str = "down"):
+        mult = -1 if direction.lower() == "down" else 1
+        self.user32.mouse_event(MOUSEEVENTF_WHEEL, 0, 0, clicks * 120 * mult, 0)
+        return True
 
     def send_key(self, vk_code: int):
         self.user32.keybd_event(vk_code, 0, 0, 0)
