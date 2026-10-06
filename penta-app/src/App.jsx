@@ -315,6 +315,21 @@ export default function App() {
   
   // WebRTC State
   const [rtcConnectionState, setRtcConnectionState] = useState('disconnected');
+
+  const handleExternalLink = async (e, url) => {
+    e.preventDefault();
+    if (window.__TAURI_INTERNALS__) {
+      try {
+        const { open } = await import('@tauri-apps/plugin-shell');
+        await open(url);
+        return;
+      } catch (err) {
+        console.error("Tauri shell open failed:", err);
+      }
+    }
+    window.open(url, '_blank');
+  };
+
   const peerConnection = useRef(null);
   const dataChannel = useRef(null);
   const webrtcPollInterval = useRef(null);
@@ -550,13 +565,18 @@ export default function App() {
 
     try {
       const isLocal = isLocalServer();
-      const endpoint = isLocal
-        ? `${serverUrl}/api/${selectedDevice === 'pc' ? 'pc' : 'mobile'}/agent`
-        : `${serverUrl}/api/device/${devId}/action`;
+      const endpointPath = isLocal
+        ? `/api/${selectedDevice === 'pc' ? 'pc' : 'mobile'}/agent`
+        : `/api/device/${devId}/action`;
+      
+      const endpoint = `${serverUrl.replace(/\/+$/, '')}${endpointPath}`;
 
       const res = await safeFetch(endpoint, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`
+        },
         body: JSON.stringify({ 
           action: 'goal', 
           type: 'goal', 
@@ -1117,7 +1137,7 @@ export default function App() {
         <button style={styles.button} type="submit">Sign In</button>
         
         <div style={{ textAlign: 'center', marginTop: '16px' }}>
-          <a href="https://pentactopus.vercel.app/" target="_blank" rel="noreferrer" style={{ color: '#60a5fa', textDecoration: 'none', fontSize: '13px' }}>
+          <a href="https://pentactopus.vercel.app/" onClick={(e) => handleExternalLink(e, "https://pentactopus.vercel.app/")} rel="noreferrer" style={{ color: '#60a5fa', textDecoration: 'none', fontSize: '13px' }}>
             Don't have an account? Register on the Web Portal
           </a>
         </div>
@@ -2108,7 +2128,7 @@ export default function App() {
               </span>
               <a 
                 href={currentMeta.keyUrl} 
-                target="_blank" 
+                onClick={(e) => handleExternalLink(e, currentMeta.keyUrl)}
                 rel="noopener noreferrer"
                 style={{
                   color: '#60a5fa',
@@ -2132,7 +2152,7 @@ export default function App() {
               Direct Link:{' '}
               <a 
                 href={currentMeta.keyUrl} 
-                target="_blank" 
+                onClick={(e) => handleExternalLink(e, currentMeta.keyUrl)}
                 rel="noopener noreferrer"
                 style={{ color: '#38bdf8', wordBreak: 'break-all' }}
               >
@@ -2170,7 +2190,7 @@ export default function App() {
           <div style={{ marginTop: '14px', textAlign: 'center' }}>
             <a 
               href={currentMeta.keyUrl} 
-              target="_blank" 
+              onClick={(e) => handleExternalLink(e, currentMeta.keyUrl)}
               rel="noopener noreferrer"
               style={{ color: '#71717a', fontSize: '11px', textDecoration: 'none' }}
               onMouseEnter={e => e.currentTarget.style.color = '#a1a1aa'}

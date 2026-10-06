@@ -1,33 +1,55 @@
-# Ignore native client app and its huge build artifacts (node_modules, target)
+# Native client app and huge build artifacts
 penta-app/
+android/accessibility/
 
-# Ignore local desktop and test tools
-tests/
-tools/
-.pytest_cache/
-
-# Ignore documentation and marketing assets
-docs/
-marketing/
-*.mp4
-
-# Ignore binary installers
+# Release archives and binary builds
+temp-release2/
+dist/
+build/
 *.exe
 *.apk
+*.spec
 
-# Ignore local database (if any)
+# Large downloads and media assets
+public/download/
+marketing/
+*.mp4
+*.wav
+*.jpg
+*.jpeg
+
+# Test suites, local scripts, and reports
+tests/
+tools/
+scripts/
+reports/
+.pytest_cache/
+
+# Local data and databases
+data/
 *.db
 
-# Ignore development configs and scripts
-.git/
-.github/
-.vscode/
+# Desktop agent and local-only modules
+adb/
+pc_control/
+vision/
+models/
+organization/
+.organization/
 ui.py
 local_ui_template.py
 run_sidecar.py
 build_sidecar.ps1
 main.py
 
+# Version control and IDE files
+.git/
+.github/
+.vscode/
+.idea/
+
 # Python cache
 __pycache__/
 *.pyc
+*.pyo
+

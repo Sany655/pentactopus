@@ -104,6 +104,7 @@ class GeminiProvider(BaseModelProvider):
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36 Pentactopus/2.5.7"
         }
 
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.model_name}:generateContent?key={self.api_key}"
         req = urllib.request.Request(
             url,
             data=json.dumps(payload).encode("utf-8"),
