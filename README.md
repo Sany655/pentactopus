@@ -56,10 +56,12 @@ v1 does not use unofficial WhatsApp Web libraries.
 
 ## Phase gates
 
-Phase 1 design and Phase 2 implementation are approved. Phase 3 Windows-agent
-work is now in progress with device-local policy, BYOK model handling, and
-approval-gated outbound actions. End-to-end and Android phases remain gated on
-separate approval.
+Phase 1 design, Phase 2 implementation, Phase 3 Windows-agent work, and the
+Phase 4 simulation harness are complete and validated. The Android Phase 5
+implementation is now added under `android/` with NotificationListenerService,
+local policy enforcement, Keystore-backed key material, and a T4/T5 approval
+screen. Real-device validation on Android 9 and one Android 8 device remains the
+final release gate.
 
 The Windows agent is implemented in the `windows_agent/` package and keeps all
 model credentials and policy decisions on-device. It reads official WhatsApp

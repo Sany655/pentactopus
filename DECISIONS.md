@@ -44,6 +44,15 @@ pending until the user approves the phase gate.
 | D-025 | Windows WhatsApp support is limited to the official Desktop app for personal use; no unofficial Web client or automated bypass mechanisms are used. | Avoids prohibited third-party WhatsApp integrations and keeps the user aware of WhatsApp terms risk. |
 | D-026 | The Windows agent records metadata-only local audit events and does not store raw message bodies, provider prompts, or recipient text in the server log path. | Preserves the privacy boundary even when local automation is in use. |
 
+## Phase 5 — implementation scaffold
+
+| ID | Decision | Rationale / implementation boundary |
+|---|---|---|
+| D-027 | Android builds use Kotlin with a minSdk of 26 and Android Keystore-protected device keys. | Keeps the supported device baseline at Android 8.0+ and preserves OS-controlled key protection. |
+| D-028 | Notification access is provided via `NotificationListenerService`, while outbound message sends use the user's chat UI through Accessibility only after T4 approval. | Matches the approved privacy and confirmation model without using unofficial WhatsApp libraries. |
+| D-029 | Android local policy blocks T6 forbidden apps and 2FA/password-manager flows before any action can execute. | Prevents the device from escalating into forbidden categories even if the model suggests it. |
+| D-030 | The Android app stores only metadata, provider config, and local approval state; message text remains local and encrypted for the target device. | Keeps server interactions limited to metadata and preserves the single-user policy boundary. |
+
 ### Phase 2 implementation prerequisites
 
 - Configure a verified Resend sender/domain in deployment; credentials remain

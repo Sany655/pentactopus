@@ -1,0 +1,6 @@
+<resources>
+    <string name="app_name">Pentactopus</string>
+    <string name="read_messages">Read messages</string>
+    <string name="approve_send">Approve send</string>
+    <string name="status">Status</string>
+</resources>
