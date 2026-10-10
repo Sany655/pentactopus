@@ -1,0 +1,204 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pentactopus.dev/contracts/v1/api.schema.json",
+  "title": "Pentactopus v1 API payloads",
+  "$defs": {
+    "uuid": {
+      "type": "string",
+      "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$"
+    },
+    "apiError": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "error"],
+      "properties": {
+        "schema_version": { "const": "1.0.3" },
+        "error": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["code", "message"],
+          "properties": {
+            "code": { "type": "string", "minLength": 1, "maxLength": 80 },
+            "message": { "type": "string", "minLength": 1, "maxLength": 300 }
+          }
+        }
+      }
+    },
+    "magicLinkRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["email"],
+      "properties": {
+        "email": { "type": "string", "minLength": 3, "maxLength": 254 }
+      }
+    },
+    "magicLinkConsume": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["token"],
+      "properties": {
+        "token": { "type": "string", "minLength": 32, "maxLength": 512 }
+      }
+    },
+    "deviceRegistration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["pairing_code", "name", "platform", "public_key"],
+      "properties": {
+        "pairing_code": { "type": "string", "minLength": 8, "maxLength": 32 },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9 ._-]{0,79}$"
+        },
+        "platform": { "enum": ["windows", "android"] },
+        "public_key": { "type": "string", "pattern": "^[A-Za-z0-9_-]{43}$" }
+      }
+    },
+    "taskCreate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "target_device_id",
+        "capability",
+        "body",
+        "input_refs",
+        "requires_confirmation",
+        "expires_at"
+      ],
+      "properties": {
+        "target_device_id": { "$ref": "#/$defs/uuid" },
+        "parent_task_id": { "$ref": "#/$defs/uuid" },
+        "capability": { "type": "string", "pattern": "^[a-z][a-z0-9_.-]{0,99}$" },
+        "body": { "$ref": "#/$defs/taskBody" },
+        "input_refs": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/uuid" },
+          "uniqueItems": true
+        },
+        "requires_confirmation": { "type": "boolean" },
+        "expires_at": { "type": "string", "minLength": 20, "maxLength": 40 }
+      }
+    },
+    "deviceRename": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9 ._-]{0,79}$"
+        }
+      }
+    },
+    "emptyObject": {
+      "type": "object",
+      "maxProperties": 0,
+      "additionalProperties": false
+    },
+    "taskBody": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "action": {
+          "enum": ["read", "draft", "send", "status", "list", "metadata", "unread_count", "summarize"]
+        },
+        "mode": {
+          "enum": ["full", "summary", "metadata", "unread_count", "draft", "send"]
+        },
+        "source_application": {
+          "enum": ["whatsapp", "sms", "email", "system", "browser"]
+        },
+        "app_id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$" },
+        "limit": { "type": "integer", "minimum": 1, "maximum": 100 },
+        "include_unread": { "type": "boolean" }
+      }
+    },
+    "taskTransition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status"],
+      "properties": {
+        "status": {
+          "enum": [
+            "awaiting_approval",
+            "running",
+            "done",
+            "failed",
+            "rejected",
+            "expired"
+          ]
+        },
+        "outcome_code": { "type": "string", "pattern": "^[a-zA-Z0-9_.-]{1,80}$" },
+        "approval_id": { "$ref": "#/$defs/uuid" },
+        "action_hash": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "local_confirmation": { "type": "boolean" }
+      }
+    },
+    "approvalRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["action_hash", "tier", "preview_inbox_ids"],
+      "properties": {
+        "action_hash": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "tier": { "enum": [4, 5] },
+        "preview_inbox_ids": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/uuid" },
+          "minItems": 1,
+          "uniqueItems": true
+        }
+      }
+    },
+    "approvalDecision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["approval_id", "action_hash", "decision"],
+      "properties": {
+        "approval_id": { "$ref": "#/$defs/uuid" },
+        "action_hash": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "decision": { "enum": ["approve", "reject"] }
+      }
+    },
+    "inboxCreate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["task_id", "target_device_id", "ciphertext_b64", "expires_at"],
+      "properties": {
+        "task_id": { "$ref": "#/$defs/uuid" },
+        "target_device_id": { "$ref": "#/$defs/uuid" },
+        "ciphertext_b64": { "type": "string", "minLength": 4, "maxLength": 1398104 },
+        "expires_at": { "type": "string", "minLength": 20, "maxLength": 40 }
+      }
+    },
+    "artifactCreate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "task_id",
+        "intended_device_id",
+        "ciphertext_b64",
+        "media_type",
+        "expires_at"
+      ],
+      "properties": {
+        "task_id": { "$ref": "#/$defs/uuid" },
+        "intended_device_id": { "$ref": "#/$defs/uuid" },
+        "ciphertext_b64": { "type": "string", "minLength": 4, "maxLength": 1398104 },
+        "media_type": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "expires_at": { "type": "string", "minLength": 20, "maxLength": 40 }
+      }
+    },
+    "settingsUpdate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["message_presentation"],
+      "properties": {
+        "message_presentation": { "enum": ["full", "summary"] }
+      }
+    }
+  }
+}

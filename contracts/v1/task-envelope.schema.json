@@ -1,0 +1,92 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pentactopus.dev/contracts/v1/task-envelope.schema.json",
+  "title": "Pentactopus v1 task envelope",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "task_id",
+    "root_task_id",
+    "parent_task_id",
+    "origin_device_id",
+    "orchestrator_device_id",
+    "target_device_id",
+    "hop_path",
+    "depth",
+    "turn_count",
+    "capability",
+    "body",
+    "input_refs",
+    "requires_confirmation",
+    "status",
+    "expires_at"
+  ],
+  "properties": {
+    "schema_version": { "const": "1.0.3" },
+    "task_id": { "$ref": "#/$defs/uuid" },
+    "root_task_id": { "$ref": "#/$defs/uuid" },
+    "parent_task_id": {
+      "anyOf": [{ "$ref": "#/$defs/uuid" }, { "type": "null" }]
+    },
+    "origin_device_id": { "$ref": "#/$defs/uuid" },
+    "orchestrator_device_id": { "$ref": "#/$defs/uuid" },
+    "target_device_id": { "$ref": "#/$defs/uuid" },
+    "hop_path": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/uuid" },
+      "minItems": 1,
+      "maxItems": 3,
+      "uniqueItems": true
+    },
+    "depth": { "type": "integer", "minimum": 0, "maximum": 2 },
+    "turn_count": { "type": "integer", "minimum": 0, "maximum": 20 },
+    "capability": { "type": "string", "pattern": "^[a-z][a-z0-9_.-]{0,99}$" },
+    "body": {
+      "$ref": "#/$defs/taskBody"
+    },
+    "input_refs": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/uuid" },
+      "uniqueItems": true
+    },
+    "requires_confirmation": { "type": "boolean" },
+    "status": {
+      "enum": [
+        "queued",
+        "claimed",
+        "awaiting_approval",
+        "running",
+        "done",
+        "failed",
+        "rejected",
+        "expired"
+      ]
+    },
+    "expires_at": { "type": "string", "minLength": 20, "maxLength": 40 }
+  },
+  "$defs": {
+    "taskBody": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "action": {
+          "enum": ["read", "draft", "send", "status", "list", "metadata", "unread_count", "summarize"]
+        },
+        "mode": {
+          "enum": ["full", "summary", "metadata", "unread_count", "draft", "send"]
+        },
+        "source_application": {
+          "enum": ["whatsapp", "sms", "email", "system", "browser"]
+        },
+        "app_id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$" },
+        "limit": { "type": "integer", "minimum": 1, "maximum": 100 },
+        "include_unread": { "type": "boolean" }
+      }
+    },
+    "uuid": {
+      "type": "string",
+      "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$"
+    }
+  }
+}

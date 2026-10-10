@@ -1,9 +1,0 @@
-<resources>
-    <string name="app_name">SMS Webhook Bridge</string>
-    <string name="channel_name">SMS Webhook Bridge Service</string>
-    <string name="channel_description">Displays service status and forwarding activity</string>
-    <string name="service_running_title">SMS Webhook Bridge Active</string>
-    <string name="service_running_desc">Listening for messages from configured sender</string>
-    <string name="action_stop">Stop</string>
-    <string name="action_start">Start</string>
-</resources>

@@ -1,0 +1,41 @@
+{
+  "capabilities": [
+    "device_status",
+    "read_message_metadata",
+    "read_message_content",
+    "draft_message",
+    "send_message",
+    "delete_item",
+    "install_app",
+    "system_settings"
+  ],
+  "tier_map": {
+    "device_status": 0,
+    "read_message_metadata": 1,
+    "read_message_content": 2,
+    "draft_message": 3,
+    "send_message": 4,
+    "delete_item": 5,
+    "install_app": 5,
+    "system_settings": 5
+  },
+  "blocked_apps": [
+    "1password",
+    "bitwarden",
+    "dashlane",
+    "lastpass",
+    "authy",
+    "google authenticator",
+    "microsoft authenticator",
+    "keepass",
+    "keepassxc",
+    "passkey",
+    "password manager"
+  ],
+  "blocked_window_titles": [
+    "authenticator",
+    "two-factor",
+    "2fa",
+    "password manager"
+  ]
+}
