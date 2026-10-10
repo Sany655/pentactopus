@@ -8,20 +8,41 @@
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Approve outbound send"
+        android:text="Review exact outbound message"
         android:textSize="20sp"
         android:paddingBottom="12dp" />
 
     <EditText
-        android:id="@+id/appNameInput"
+        android:id="@+id/recipientInput"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:hint="Recipient or app name" />
+        android:hint="Exact visible WhatsApp recipient name or number"
+        android:singleLine="true" />
+
+    <EditText
+        android:id="@+id/messageInput"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Exact message text"
+        android:inputType="textCapSentences|textMultiLine"
+        android:minLines="3" />
+
+    <CheckBox
+        android:id="@+id/confirmExactPayload"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Approve one send to this recipient with exactly this text." />
+
+    <Button
+        android:id="@+id/enableAccessibilityButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Enable accessibility service" />
 
     <Button
         android:id="@+id/approveButton"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Approve"
+        android:text="Approve exact send"
         android:layout_marginTop="16dp" />
 </LinearLayout>

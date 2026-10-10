@@ -8,14 +8,39 @@ data class CapabilityRule(
 
 class LocalPolicy {
     private val blockedApps = setOf(
-        "com.android.chrome",
-        "com.android.settings",
+        "com.google.android.apps.walletnfcrel",
+        "com.samsung.android.spay",
         "com.google.android.apps.authenticator2",
+        "com.azure.authenticator",
+        "com.microsoft.authenticator",
         "com.lastpass",
         "com.dashlane",
         "com.keepersecurity.android",
         "com.authy",
         "com.bitwarden",
+        "com.agilebits.onepassword",
+        "com.kaspersky.passwordmanager",
+        "com.x8bit.bitwarden",
+        "com.chase.sig.android",
+        "com.bankofamerica.digitalwallet",
+        "com.wf.wellsfargomobile",
+        "com.citi.citimobile",
+        "com.usbank.mobilebanking",
+        "com.infonow.bofa",
+        "com.paypal.android.p2pmobile",
+        "com.venmo",
+        "com.squareup.cash",
+    )
+    private val blockedAppNameTerms = setOf(
+        "bank",
+        "wallet",
+        "payment",
+        "finance",
+        "authenticator",
+        "password manager",
+        "password vault",
+        "two-factor",
+        "2fa",
     )
 
     private val blockedWindowTitles = setOf(
@@ -36,12 +61,28 @@ class LocalPolicy {
         "system_settings" to CapabilityRule("system_settings", 5),
     )
 
-    fun authorize(capability: String, actionTier: Int, appName: String? = null, windowTitle: String? = null): Boolean {
+    fun authorize(
+        capability: String,
+        actionTier: Int,
+        appName: String? = null,
+        windowTitle: String? = null,
+    ): Boolean {
         val rule = allowedCapabilities[capability] ?: return false
         if (!rule.enabled) return false
         if (actionTier < rule.tier) return false
-        if (appName != null && blockedApps.contains(appName)) return false
-        if (windowTitle != null && blockedWindowTitles.any { it.equals(windowTitle, ignoreCase = true) }) return false
+        if (isForbiddenApp(appName) || isForbiddenWindow(windowTitle)) return false
         return true
+    }
+
+    fun isForbiddenApp(packageName: String?): Boolean {
+        val normalized = packageName?.trim()?.lowercase().orEmpty()
+        return normalized in blockedApps ||
+            blockedApps.any { normalized.startsWith("$it.") } ||
+            blockedAppNameTerms.any { normalized.contains(it) }
+    }
+
+    fun isForbiddenWindow(windowTitle: String?): Boolean {
+        val title = windowTitle?.trim().orEmpty()
+        return title.isNotEmpty() && blockedWindowTitles.any { title.contains(it, ignoreCase = true) }
     }
 }

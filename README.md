@@ -14,8 +14,7 @@ application implementation has been reused.
 
 See [DESIGN.md](./DESIGN.md) for the architecture, API and database design,
 threat model, and reset inventory. Security-relevant choices are tracked in
-[DECISIONS.md](./DECISIONS.md). Phase 2 server implementation is underway;
-the Windows, end-to-end, and Android phases remain gated on approval.
+[DECISIONS.md](./DECISIONS.md).
 
 ## Server development
 
@@ -46,27 +45,37 @@ a guarantee of physical-media erasure.
 
 Message text may be processed by the model provider selected by the user.
 Third parties who message the user are not party to that agreement; the user
-is responsible for their provider account and key. A local-only model option
-keeps content on the user's devices.
+is responsible for their provider account and key. The Android client permits
+remote model connections over HTTPS, or an HTTP model endpoint on localhost
+only for on-device inference.
 
-Windows WhatsApp support is planned to read the official WhatsApp Desktop app
-for personal use only. Automation may be restricted by WhatsApp's terms.
-Review the current terms and accept that risk before enabling WhatsApp support.
-v1 does not use unofficial WhatsApp Web libraries.
+Windows app automation is capability-based; WhatsApp was one example use case,
+not a requirement for the Windows agent. The first real desktop action is
+writing an unsent draft into Notepad. The user reviews and saves/sends it
+manually. The agent does not currently integrate with WhatsApp or other
+messaging apps.
 
-## Phase gates
+## Implementation and validation status
 
-Phase 1 design, Phase 2 implementation, Phase 3 Windows-agent work, and the
-Phase 4 simulation harness are complete and validated. The Android Phase 5
-implementation is now added under `android/` with NotificationListenerService,
-local policy enforcement, Keystore-backed key material, and a T4/T5 approval
-screen. Real-device validation on Android 9 and one Android 8 device remains the
-final release gate.
+The server and Windows client implementations are present; Phase 4 has
+simulation coverage, not two-device acceptance. The Android client under
+`android/` includes notification capture, BYOK chat, Keystore-backed settings
+and device signing, local policy, exact-payload local T4 approval, server
+pairing, and signed foreground polling. The Android client currently displays
+server task metadata but does not claim or execute tasks; server-mediated
+cross-device approval is also not integrated. These are remaining v1
+implementation gaps, not verified features.
 
-The Windows agent is implemented in the `windows_agent/` package and keeps all
-model credentials and policy decisions on-device. It reads official WhatsApp
-Desktop metadata/content for personal use only and blocks T6 forbidden apps and
-2FA/password-manager workflows locally before any action is attempted.
+The [Android build workflow](./.github/workflows/android-build.yml) runs
+Android unit tests and assembles an unsigned debug APK. A successful run and
+real-device checks on Android 9 and one Android 8 device are still required
+before declaring Android Phase 5 complete. Phase 4 also needs its real
+two-device scenarios before end-to-end acceptance can be claimed.
+
+The Windows agent is implemented in the `windows_agent/` package and keeps
+policy decisions on-device. Its Notepad draft action types only locally
+available text, logs metadata but not draft content, and blocks T6 forbidden
+apps and 2FA/password-manager workflows locally before any action is attempted.
 
 ## Legacy reset record
 

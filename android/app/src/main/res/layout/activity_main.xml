@@ -1,36 +1,141 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:padding="24dp">
+    android:fillViewport="true">
 
-    <TextView
-        android:id="@+id/status"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Status"
-        android:textSize="18sp"
-        android:paddingBottom="16dp" />
+        android:orientation="vertical"
+        android:padding="20dp">
 
-    <Button
-        android:id="@+id/readButton"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Read messages" />
+        <TextView
+            android:id="@+id/status"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Android agent"
+            android:textSize="20sp"
+            android:paddingBottom="8dp" />
 
-    <Button
-        android:id="@+id/approveButton"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Approve send"
-        android:layout_marginTop="12dp" />
+        <TextView
+            android:id="@+id/privacyNotice"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Notification text stays on this device unless you submit it to your selected model provider. Third-party senders are not part of your provider agreement; you are responsible for your provider account and key."
+            android:paddingBottom="12dp" />
 
-    <TextView
-        android:id="@+id/messageText"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:paddingTop="24dp"
-        android:text="No unread notifications" />
-</LinearLayout>
+        <Button
+            android:id="@+id/notificationAccessButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Enable WhatsApp notification access" />
+
+        <EditText
+            android:id="@+id/serverUrlInput"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Pentactopus server URL (HTTPS)"
+            android:inputType="textUri"
+            android:singleLine="true" />
+
+        <EditText
+            android:id="@+id/deviceNameInput"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Device name (for example android-phone)"
+            android:singleLine="true" />
+
+        <EditText
+            android:id="@+id/pairingCodeInput"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="One-time pairing code"
+            android:inputType="textVisiblePassword"
+            android:singleLine="true" />
+
+        <Button
+            android:id="@+id/pairDeviceButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Pair this device" />
+
+        <Button
+            android:id="@+id/readButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Read captured notifications"
+            android:layout_marginTop="8dp" />
+
+        <TextView
+            android:id="@+id/messageText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="No WhatsApp notifications captured."
+            android:padding="8dp" />
+
+        <EditText
+            android:id="@+id/modelUrlInput"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="HTTPS provider URL or local Ollama URL"
+            android:inputType="textUri"
+            android:singleLine="true" />
+
+        <EditText
+            android:id="@+id/modelNameInput"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Model name"
+            android:singleLine="true" />
+
+        <EditText
+            android:id="@+id/modelKeyInput"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Your model provider API key (optional until chat)"
+            android:inputType="textPassword"
+            android:singleLine="true" />
+
+        <CheckBox
+            android:id="@+id/providerConsent"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="I understand submitted text goes to the configured model; a third-party provider may process it, but a local localhost model keeps it on this device." />
+
+        <Button
+            android:id="@+id/saveModelSettingsButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Save model settings securely" />
+
+        <TextView
+            android:id="@+id/chatHistory"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:minHeight="100dp"
+            android:padding="8dp"
+            android:text="Local assistant chat" />
+
+        <EditText
+            android:id="@+id/chatInput"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Ask your local agent"
+            android:inputType="textCapSentences|textMultiLine"
+            android:minLines="2" />
+
+        <Button
+            android:id="@+id/sendChatButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Ask model (T2 content is sent only after consent)" />
+
+        <Button
+            android:id="@+id/approveButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Review local T4 send demo"
+            android:layout_marginTop="8dp" />
+    </LinearLayout>
+</ScrollView>

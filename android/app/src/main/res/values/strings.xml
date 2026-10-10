@@ -3,4 +3,5 @@
     <string name="read_messages">Read messages</string>
     <string name="approve_send">Approve send</string>
     <string name="status">Status</string>
+    <string name="accessibility_service_description">Allows the agent to send one exact WhatsApp message only after you review and approve the recipient and text on this device.</string>
 </resources>

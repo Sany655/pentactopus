@@ -2,6 +2,7 @@ import unittest
 from pathlib import Path
 
 from windows_agent.agent import ApprovalRequired, WindowsAgent
+from windows_agent.notepad import MAX_NOTEPAD_TEXT_CHARACTERS, MockNotepadController
 from windows_agent.policy import LocalPolicy, PolicyError, load_policy
 from windows_agent.whatsapp import MockWhatsAppUI, WhatsAppReader
 
@@ -32,7 +33,14 @@ class WindowsAgentTests(unittest.TestCase):
                 }
             ])
         )
-        self.agent = WindowsAgent(policy=policy, whatsapp_reader=whatsapp)
+        self.notepad = MockNotepadController()
+        self.audit_events = []
+        self.agent = WindowsAgent(
+            policy=policy,
+            whatsapp_reader=whatsapp,
+            notepad_controller=self.notepad,
+            audit_sink=self.audit_events.append,
+        )
 
     def test_read_message_metadata_works_for_t1(self):
         result = self.agent.run_task({"capability": "read_message_metadata", "tier": 1})
@@ -58,6 +66,37 @@ class WindowsAgentTests(unittest.TestCase):
                 "recipient": "+15550001111",
                 "payload": "hello",
             })
+
+    def test_draft_text_in_notepad_opens_and_types_without_logging_text(self):
+        result = self.agent.run_task({
+            "capability": "draft_text_in_notepad",
+            "tier": 3,
+            "app_name": "notepad.exe",
+            "text": "Write this into Notepad.",
+        })
+
+        self.assertEqual(result["status"], "done")
+        self.assertTrue(self.notepad.opened)
+        self.assertEqual(self.notepad.text, "Write this into Notepad.")
+        self.assertEqual(self.audit_events[-1].metadata["character_count"], 24)
+        self.assertNotIn("Write this into Notepad.", repr(self.audit_events))
+
+    def test_draft_text_in_notepad_rejects_empty_text(self):
+        with self.assertRaises(ValueError):
+            self.agent.run_task({
+                "capability": "draft_text_in_notepad",
+                "tier": 3,
+                "text": "   ",
+            })
+
+    def test_draft_text_in_notepad_enforces_length_limit(self):
+        with self.assertRaises(ValueError):
+            self.agent.run_task({
+                "capability": "draft_text_in_notepad",
+                "tier": 3,
+                "text": "x" * (MAX_NOTEPAD_TEXT_CHARACTERS + 1),
+            })
+        self.assertFalse(self.notepad.opened)
 
 
 if __name__ == "__main__":

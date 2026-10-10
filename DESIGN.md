@@ -1,9 +1,9 @@
 # Pentactopus v1 — Architecture and Reset Audit
 
-**Status: Phase 1 approved; Phase 2 implementation authorized and in progress.**
-The Phase 2 provider, turn-cap, payload-cap, validator, and license decisions
-are listed in [DECISIONS.md](./DECISIONS.md). Do not begin Phase 3 until the
-user approves Phase 2.
+**Status:** Phases 1-3 are implemented; Phase 4 has simulation coverage but
+still needs real-device acceptance. Phase 5 Android work is in progress and
+still needs a successful CI build plus Android 9 and Android 8 device tests.
+Security and dependency decisions are listed in [DECISIONS.md](./DECISIONS.md).
 
 ## 1. Scope and reset plan
 
@@ -661,9 +661,9 @@ plan; do not claim physical-media erasure from logical key expiry.
   model provider, that third-party senders are not parties to the user's
   provider agreement, and that the user is responsible for provider account
   and key. It also offers local-only inference (for example Ollama).
-- Windows WhatsApp support is limited to reading official WhatsApp Desktop
-  notifications/UI for personal use, with the terms-of-service risk disclosed
-  in README and setup. Android reads notification content through
+- Windows automation is capability-based and not tied to a messaging app;
+  WhatsApp was an example use case only. The first desktop action is an unsent
+  T3 draft in Notepad. Android reads notification content through
   `NotificationListenerService`; sending uses the user's chat UI via
   Accessibility only after T4 approval. No unofficial WhatsApp Web client.
 
@@ -719,24 +719,26 @@ removing legacy files while preserving Git history.
 ciphertext, a 20-turn conversation cap, a 1 MiB ciphertext object limit,
 Ajv + Python `jsonschema`, and the existing MIT license are selected.
 
-**Phase 2 implementation (authorized; in progress):** legacy files listed in
-section 10 have been removed from the working tree while preserving history.
-The unreleased API and task-envelope schemas were revised to 1.0.1 for
-parent-task delegation/exact-approval fields, 1.0.2 for strict metadata-only
-task bodies, and 1.0.3 to remove shadow device/artifact/step identifiers.
-Implement migrations, API handlers, magic links, pairing/signatures,
-poll/claim, task/approval state, temporary inbox, audit metadata, and targeted
-tests for ownership isolation, claim races, hop/depth limits, replay, and
-expiry. Stop for approval.
+**Phase 2 implementation:** Completed and approved. The API/task schemas were
+revised to 1.0.1 for parent-task delegation/exact-approval fields, 1.0.2 for
+strict metadata-only task bodies, and 1.0.3 to remove shadow
+device/artifact/step identifiers. Route handlers, auth, device pairing and
+signatures, task/approval state, temporary inbox, metadata audit, and targeted
+tests are implemented.
 
-**Phase 3:** Windows agent, local policy, polling, local BYOK, WhatsApp read
-metadata/content, T3/T4 flow, local audit, mocked UI/model tests. Stop.
+**Phase 3:** Windows agent, local policy, polling, local BYOK, capability-based
+desktop automation, T3/T4 flow, local audit, and mocked UI/model tests are
+implemented. WhatsApp was an illustrative use case, not a required Windows
+app.
 
-**Phase 4:** real two-device end-to-end scenarios and failure/approval tests.
-Stop.
+**Phase 4:** Simulation coverage exists for the requested cross-device flows.
+Real two-device end-to-end acceptance remains outstanding.
 
-**Phase 5:** Kotlin Android agent, notification listener, chat/approval UI,
-local policy, Keystore BYOK; test Android 9 and one Android 8 device. Stop.
+**Phase 5:** Android Kotlin client work is in progress: notification listener,
+chat/approval UI, local policy, Keystore-backed secrets, pairing, and signed
+foreground polling are present. Task execution and cross-device approval
+synchronization are not integrated. A successful Android CI build and tests on
+Android 9 and one Android 8 device remain required.
 
 At each gate, do not start the next phase without explicit approval. Any new
 dependency must be listed with purpose and security/maintenance rationale

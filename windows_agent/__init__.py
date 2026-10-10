@@ -7,6 +7,7 @@ agent only enforces policy and runs device-local model actions.
 
 from .agent import ApprovalRequired, WindowsAgent
 from .model import LocalModelClient
+from .notepad import MockNotepadController, WindowsNotepadController
 from .policy import LocalPolicy, PolicyError, load_policy
 from .whatsapp import MockWhatsAppUI, WhatsAppReader
 
@@ -15,8 +16,10 @@ __all__ = [
     "LocalModelClient",
     "LocalPolicy",
     "MockWhatsAppUI",
+    "MockNotepadController",
     "PolicyError",
     "WhatsAppReader",
+    "WindowsNotepadController",
     "WindowsAgent",
     "load_policy",
 ]

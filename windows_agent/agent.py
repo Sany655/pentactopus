@@ -4,7 +4,12 @@ from dataclasses import dataclass
 from typing import Any, Mapping
 
 from .model import LocalModelClient
-from .policy import LocalPolicy, PolicyError
+from .notepad import (
+    MAX_NOTEPAD_TEXT_CHARACTERS,
+    NotepadController,
+    WindowsNotepadController,
+)
+from .policy import DEFAULT_POLICY, LocalPolicy, PolicyError
 from .whatsapp import WhatsAppReader
 
 
@@ -30,11 +35,13 @@ class WindowsAgent:
         policy: LocalPolicy | None = None,
         model_client: LocalModelClient | None = None,
         whatsapp_reader: WhatsAppReader | None = None,
+        notepad_controller: NotepadController | None = None,
         audit_sink: Any | None = None,
     ) -> None:
-        self.policy = policy or LocalPolicy()
+        self.policy = policy or DEFAULT_POLICY
         self.model_client = model_client or LocalModelClient(provider="mock")
         self.whatsapp_reader = whatsapp_reader or WhatsAppReader()
+        self.notepad_controller = notepad_controller or WindowsNotepadController()
         self.audit_sink = audit_sink
 
     @property
@@ -49,7 +56,9 @@ class WindowsAgent:
     def run_task(self, task: Mapping[str, Any]) -> dict[str, Any]:
         capability = str(task.get("capability") or task.get("action") or "")
         action_tier = int(task.get("tier", self.policy.required_tier(capability) if capability else 0))
-        app_name = str(task.get("app_name") or task.get("app") or "") or None
+        app_name = "notepad.exe" if capability == "draft_text_in_notepad" else (
+            str(task.get("app_name") or task.get("app") or "") or None
+        )
         window_title = str(task.get("window_title") or "") or None
         requires_confirmation = bool(task.get("requires_confirmation", False))
 
@@ -75,6 +84,18 @@ class WindowsAgent:
             self.audit("draft_message", prompt_length=len(prompt))
             draft = self.model_client.draft_message(prompt)
             return {"status": "done", "result": {"draft": draft, "provider": self.model_client.provider}}
+
+        if capability == "draft_text_in_notepad":
+            text = task.get("text")
+            if not isinstance(text, str) or not text.strip():
+                raise ValueError("Non-empty locally available text is required for Notepad.")
+            if len(text) > MAX_NOTEPAD_TEXT_CHARACTERS:
+                raise ValueError(
+                    f"Notepad text must not exceed {MAX_NOTEPAD_TEXT_CHARACTERS} characters."
+                )
+            self.notepad_controller.open_and_type(text)
+            self.audit("draft_text_in_notepad", app="notepad.exe", character_count=len(text))
+            return {"status": "done", "result": {"app": "notepad.exe", "character_count": len(text)}}
 
         if capability == "send_message":
             if requires_confirmation:

@@ -41,7 +41,7 @@ pending until the user approves the phase gate.
 |---|---|---|
 | D-023 | Windows agent policy is authoritative for capability gating, T-tier enforcement, and T6 blocks for password managers and 2FA flows. | The server stores metadata only; the device enforces local policy before any action. |
 | D-024 | Local BYOK model calls remain on-device using provider credentials stored in Windows Credential Manager or equivalent local protection; local-only Ollama/HTTP endpoints remain a supported option. | Keeps provider keys off the server and supports a local-only inference mode. |
-| D-025 | Windows WhatsApp support is limited to the official Desktop app for personal use; no unofficial Web client or automated bypass mechanisms are used. | Avoids prohibited third-party WhatsApp integrations and keeps the user aware of WhatsApp terms risk. |
+| D-025 | Windows automation is general and capability-based; WhatsApp was an illustrative use case, not a required integration. Start with a narrowly allowlisted T3 Notepad draft action; do not add unofficial WhatsApp Web clients. | Keeps the first real app action reviewable and unsent while avoiding an unnecessary product-specific integration. |
 | D-026 | The Windows agent records metadata-only local audit events and does not store raw message bodies, provider prompts, or recipient text in the server log path. | Preserves the privacy boundary even when local automation is in use. |
 
 ## Phase 5 — implementation scaffold
@@ -51,7 +51,10 @@ pending until the user approves the phase gate.
 | D-027 | Android builds use Kotlin with a minSdk of 26 and Android Keystore-protected device keys. | Keeps the supported device baseline at Android 8.0+ and preserves OS-controlled key protection. |
 | D-028 | Notification access is provided via `NotificationListenerService`, while outbound message sends use the user's chat UI through Accessibility only after T4 approval. | Matches the approved privacy and confirmation model without using unofficial WhatsApp libraries. |
 | D-029 | Android local policy blocks T6 forbidden apps and 2FA/password-manager flows before any action can execute. | Prevents the device from escalating into forbidden categories even if the model suggests it. |
-| D-030 | The Android app stores only metadata, provider config, and local approval state; message text remains local and encrypted for the target device. | Keeps server interactions limited to metadata and preserves the single-user policy boundary. |
+| D-030 | The Android client keeps captured notifications in a bounded process-memory list and encrypts provider credentials and one-use local approval data with an Android Keystore AES key. | Avoids persistence of notification text while protecting secrets at rest. |
+| D-031 | The Android client uses Bouncy Castle's `bcprov-jdk18on` for Ed25519 key generation and request signatures on Android 8/API 26; its private key is encrypted at rest with the Android Keystore-backed AES key. | Android API 26 does not consistently provide the required Ed25519 JCA implementation. This runtime dependency stays client-side and sends only public keys/signatures, never private keys or message content, to the server. |
+| D-032 | Android server sync runs only while the app is foregrounded, polls every five seconds, and sends a heartbeat every 12th poll. The client displays queued and active task metadata but does not claim or execute tasks until supported local handlers exist. | Avoids background battery/network use and prevents consuming work that the current Android agent cannot safely execute. |
+| D-033 | Android disables application data backup and permits cleartext model traffic only to `localhost`; all remote model and server connections require HTTPS and do not follow redirects. | Keystore-encrypted preferences cannot be restored usefully without the device-bound key, and cleartext traffic outside loopback could expose prompts, message text, or credentials. |
 
 ### Phase 2 implementation prerequisites
 
@@ -64,6 +67,6 @@ pending until the user approves the phase gate.
   identity, and encrypted inbox/artifact payloads are capped at 1 MiB.
 - No package beyond the approved dependency ledger was added.
 
-Phase 2 implementation was explicitly authorized after the approved legacy
-reset. Work is in progress; do not begin Phase 3 until the user approves the
-Phase 2 gate.
+Phase 2 was implemented and approved. Phase 3 Windows-agent work is implemented,
+and Phase 4 currently has simulation coverage only. Android Phase 5 remains in
+progress; its build and required real-device tests are still outstanding.
