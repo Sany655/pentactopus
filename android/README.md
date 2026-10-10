@@ -23,6 +23,9 @@ Notes:
 - Remote model endpoints require HTTPS and a provider key. A localhost endpoint
   may use HTTP without a key for on-device inference; cleartext is denied for
   all other hosts.
+- Message, pairing-code, approval, and provider-key fields are excluded from
+  saved view state/autofill; message screens block screenshots and recents
+  previews.
 - Ed25519 support uses Bouncy Castle because the Android 8/API 26 baseline does
   not consistently provide the required JCA implementation. The private key
   is encrypted at rest with an Android Keystore-backed AES key.

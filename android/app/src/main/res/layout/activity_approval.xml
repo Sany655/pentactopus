@@ -17,7 +17,9 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:hint="Exact visible WhatsApp recipient name or number"
-        android:singleLine="true" />
+        android:singleLine="true"
+        android:saveEnabled="false"
+        android:importantForAutofill="no" />
 
     <EditText
         android:id="@+id/messageInput"
@@ -25,7 +27,9 @@
         android:layout_height="wrap_content"
         android:hint="Exact message text"
         android:inputType="textCapSentences|textMultiLine"
-        android:minLines="3" />
+        android:minLines="3"
+        android:saveEnabled="false"
+        android:importantForAutofill="no" />
 
     <CheckBox
         android:id="@+id/confirmExactPayload"

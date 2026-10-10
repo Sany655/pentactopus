@@ -13,6 +13,10 @@ class ApprovalActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        window.setFlags(
+            android.view.WindowManager.LayoutParams.FLAG_SECURE,
+            android.view.WindowManager.LayoutParams.FLAG_SECURE,
+        )
         binding = ActivityApprovalBinding.inflate(layoutInflater)
         setContentView(binding.root)
 

@@ -3,7 +3,6 @@ package com.pentactopus.android
 import android.util.Base64
 import org.json.JSONObject
 import java.net.HttpURLConnection
-import java.net.URI
 import java.net.URL
 import java.security.MessageDigest
 import java.security.SecureRandom
@@ -19,7 +18,7 @@ class AndroidDeviceApi(
     private val identity: AndroidDeviceIdentity,
 ) {
     fun pair(name: String, pairingCode: String): String {
-        require(isSecureServerUrl(serverUrl)) { "Server URL must use HTTPS." }
+        require(DeviceServerEndpointPolicy.allows(serverUrl)) { "Server URL must be an HTTPS origin." }
         require(name.matches(Regex("^[A-Za-z0-9][A-Za-z0-9 ._-]{0,79}$"))) {
             "Device name is invalid."
         }
@@ -78,7 +77,7 @@ class AndroidDeviceApi(
         request(method, path, body, signed = true)
 
     private fun request(method: String, path: String, body: String, signed: Boolean): JSONObject {
-        require(isSecureServerUrl(serverUrl)) { "Server URL must be an HTTPS origin." }
+        require(DeviceServerEndpointPolicy.allows(serverUrl)) { "Server URL must be an HTTPS origin." }
         val bytes = body.toByteArray(Charsets.UTF_8)
         val connection = URL(serverUrl.trimEnd('/') + path).openConnection() as HttpURLConnection
         connection.instanceFollowRedirects = false
@@ -150,16 +149,6 @@ class AndroidDeviceApi(
     private fun sha256Hex(value: ByteArray): String =
         MessageDigest.getInstance("SHA-256").digest(value)
             .joinToString("") { "%02x".format(it) }
-
-    private fun isSecureServerUrl(value: String): Boolean = runCatching {
-        val uri = URI(value)
-        uri.scheme.equals("https", ignoreCase = true) &&
-            !uri.host.isNullOrBlank() &&
-            uri.rawUserInfo == null &&
-            (uri.rawPath.isNullOrEmpty() || uri.rawPath == "/") &&
-            uri.rawQuery == null &&
-            uri.rawFragment == null
-    }.getOrDefault(false)
 
     companion object {
         private const val API_SCHEMA_VERSION = "1.0.3"

@@ -2,7 +2,20 @@ package com.pentactopus.android
 
 import org.json.JSONObject
 import java.security.MessageDigest
+import java.nio.ByteBuffer
 import java.util.UUID
+
+internal object ExactActionHash {
+    fun calculate(vararg fields: String): String {
+        val digest = MessageDigest.getInstance("SHA-256")
+        fields.forEach { field ->
+            val bytes = field.toByteArray(Charsets.UTF_8)
+            digest.update(ByteBuffer.allocate(Int.SIZE_BYTES).putInt(bytes.size).array())
+            digest.update(bytes)
+        }
+        return digest.digest().joinToString("") { "%02x".format(it) }
+    }
+}
 
 data class ApprovedWhatsAppSend(
     val approvalId: String,
@@ -52,11 +65,7 @@ data class ApprovedWhatsAppSend(
 
         private const val APPROVAL_LIFETIME_MS = 5 * 60 * 1000L
 
-        private fun hash(approvalId: String, recipient: String, text: String, expiresAtEpochMs: Long): String {
-            val canonical = listOf(approvalId, recipient, text, expiresAtEpochMs.toString()).joinToString("\n")
-            return MessageDigest.getInstance("SHA-256")
-                .digest(canonical.toByteArray(Charsets.UTF_8))
-                .joinToString("") { "%02x".format(it) }
-        }
+        private fun hash(approvalId: String, recipient: String, text: String, expiresAtEpochMs: Long): String =
+            ExactActionHash.calculate(approvalId, recipient, text, expiresAtEpochMs.toString())
     }
 }

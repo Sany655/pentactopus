@@ -52,7 +52,9 @@
             android:layout_height="wrap_content"
             android:hint="One-time pairing code"
             android:inputType="textVisiblePassword"
-            android:singleLine="true" />
+            android:singleLine="true"
+            android:saveEnabled="false"
+            android:importantForAutofill="no" />
 
         <Button
             android:id="@+id/pairDeviceButton"
@@ -72,7 +74,8 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="No WhatsApp notifications captured."
-            android:padding="8dp" />
+            android:padding="8dp"
+            android:saveEnabled="false" />
 
         <EditText
             android:id="@+id/modelUrlInput"
@@ -95,7 +98,9 @@
             android:layout_height="wrap_content"
             android:hint="Your model provider API key (optional until chat)"
             android:inputType="textPassword"
-            android:singleLine="true" />
+            android:singleLine="true"
+            android:saveEnabled="false"
+            android:importantForAutofill="no" />
 
         <CheckBox
             android:id="@+id/providerConsent"
@@ -115,7 +120,8 @@
             android:layout_height="wrap_content"
             android:minHeight="100dp"
             android:padding="8dp"
-            android:text="Local assistant chat" />
+            android:text="Local assistant chat"
+            android:saveEnabled="false" />
 
         <EditText
             android:id="@+id/chatInput"
@@ -123,7 +129,9 @@
             android:layout_height="wrap_content"
             android:hint="Ask your local agent"
             android:inputType="textCapSentences|textMultiLine"
-            android:minLines="2" />
+            android:minLines="2"
+            android:saveEnabled="false"
+            android:importantForAutofill="no" />
 
         <Button
             android:id="@+id/sendChatButton"

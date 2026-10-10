@@ -10,6 +10,8 @@ class PolicyTest {
         val policy = LocalPolicy()
         assertFalse(policy.authorize("system_settings", 5, appName = "com.lastpass"))
         assertFalse(policy.authorize("system_settings", 5, windowTitle = "2FA"))
+        assertFalse(policy.authorize("send_message", 4, windowTitle = "Bank account verification"))
+        assertFalse(policy.authorize("send_message", 4, windowTitle = "Enter one-time code"))
         assertFalse(policy.authorize("system_settings", 5, appName = "com.chase.sig.android"))
         assertFalse(policy.authorize("system_settings", 5, appName = "My Bank"))
     }
@@ -31,5 +33,22 @@ class PolicyTest {
         assertFalse(ModelEndpointPolicy.allows("http://127.0.0.1:11434/v1/chat/completions"))
         assertFalse(ModelEndpointPolicy.allows("https://user:password@example.test/chat"))
         assertFalse(ModelEndpointPolicy.allows("https://example.test/chat#fragment"))
+    }
+
+    @Test
+    fun deviceServerEndpointMustBeHttpsOriginOnly() {
+        assertTrue(DeviceServerEndpointPolicy.allows("https://pentactopus.example"))
+        assertTrue(DeviceServerEndpointPolicy.allows("https://pentactopus.example/"))
+        assertFalse(DeviceServerEndpointPolicy.allows("http://pentactopus.example"))
+        assertFalse(DeviceServerEndpointPolicy.allows("https://user:password@pentactopus.example"))
+        assertFalse(DeviceServerEndpointPolicy.allows("https://pentactopus.example/api"))
+        assertFalse(DeviceServerEndpointPolicy.allows("https://pentactopus.example/?next=x"))
+    }
+
+    @Test
+    fun exactApprovalHashUsesUnambiguousFieldBoundaries() {
+        val left = ExactActionHash.calculate("A", "B\nC")
+        val right = ExactActionHash.calculate("A\nB", "C")
+        assertFalse(left == right)
     }
 }

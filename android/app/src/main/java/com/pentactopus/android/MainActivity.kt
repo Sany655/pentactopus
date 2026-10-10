@@ -23,6 +23,10 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        window.setFlags(
+            android.view.WindowManager.LayoutParams.FLAG_SECURE,
+            android.view.WindowManager.LayoutParams.FLAG_SECURE,
+        )
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
@@ -123,7 +127,7 @@ class MainActivity : AppCompatActivity() {
         val serverUrl = binding.serverUrlInput.text?.toString()?.trim().orEmpty()
         val deviceName = binding.deviceNameInput.text?.toString()?.trim().orEmpty()
         val pairingCode = binding.pairingCodeInput.text?.toString()?.trim().orEmpty()
-        if (!isSecureEndpoint(serverUrl) || deviceName.isBlank() || pairingCode.isBlank()) {
+        if (!DeviceServerEndpointPolicy.allows(serverUrl) || deviceName.isBlank() || pairingCode.isBlank()) {
             showMessage("Enter the HTTPS server URL, a device name, and a current pairing code.")
             return
         }

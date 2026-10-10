@@ -48,6 +48,18 @@ class LocalPolicy {
         "2FA",
         "Two-factor",
         "Password Manager",
+        "Password",
+        "Bank",
+        "Wallet",
+        "Payment",
+        "Finance",
+        "Sign in",
+        "Sign-in",
+        "Authentication",
+        "Verification code",
+        "Security code",
+        "One-time code",
+        "OTP",
     )
 
     private val allowedCapabilities = mapOf(
